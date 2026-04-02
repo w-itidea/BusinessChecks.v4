@@ -1,0 +1,74 @@
+# BusinessChecks Analyzer - konfiguracja
+# Scheduler uruchamia Claude API z ponizszymi checkami
+
+schedule:
+  # cron: "0 8 * * 1-5"  # poniedzialek-piatek o 8:00
+  interval: "daily"
+  timezone: "Europe/Warsaw"
+
+# Polaczenie z baza (referencja do env vars)
+database:
+  connection_string_env: "BIDATA_CONNECTION_STRING"
+
+# Wyniki
+output:
+  directory: "runs/auto"
+  format: "markdown"
+  notify:
+    # slack_webhook_env: "SLACK_WEBHOOK_URL"
+    on_critical: true
+    on_warning: false
+
+# Definicje checkow
+checks:
+  - name: "weekly-losses"
+    description: "Stratne zamowienia z ostatnich 7 dni"
+    sql_file: "sql/reports/weekly-losses.sql"
+    params:
+      DAYS: 7
+    thresholds:
+      critical: "Profit < -50"
+      warning: "Profit < -20"
+    knowledge_file: "knowledge/order-profit-guide.md"
+
+  - name: "problematic-products"
+    description: "Produkty z powtarzajacymi sie stratami"
+    sql_file: "sql/reports/problematic-products.sql"
+    params:
+      DAYS: 30
+    thresholds:
+      critical: "SumaStrat < -200"
+      warning: "LiczbaStrat >= 5"
+    knowledge_file: "knowledge/order-profit-guide.md"
+
+  - name: "shipping-estimation-diff"
+    description: "Duze roznice estymacji vs rzeczywistych kosztow wysylki"
+    sql_file: "sql/diagnostic/shipping-estimation-diff.sql"
+    params:
+      DAYS: 7
+    thresholds:
+      critical: "ProcentRoznicy > 100"
+      warning: "ProcentRoznicy > 50"
+    knowledge_file: "knowledge/order-profit-guide.md"
+
+  - name: "marketplace-cost-anomalies"
+    description: "Anomalie kosztow marketplace"
+    sql_file: "sql/diagnostic/marketplace-cost-analysis.sql"
+    params:
+      DAYS: 7
+    thresholds:
+      critical: "ProcentMarketplace > 25"
+      warning: "ProcentMarketplace > 20"
+    knowledge_file: "knowledge/order-profit-guide.md"
+
+# Prompt dla Claude API - analiza wynikow
+analyzer_prompt: |
+  Jestes analitykiem finansowym e-commerce.
+  Przeanalizuj wyniki checkow i:
+  1. Zidentyfikuj najwazniejsze problemy (critical first)
+  2. Okresl przyczyne kazdego problemu
+  3. Zaproponuj konkretne akcje
+  4. Zapisz wyniki w formacie markdown checklisty
+
+  Uzyj wiedzy z pliku knowledge do interpretacji wynikow.
+  Skup sie na actionable insights - co trzeba zrobic TERAZ.

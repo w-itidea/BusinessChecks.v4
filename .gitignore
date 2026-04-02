@@ -1,0 +1,11 @@
+# Wyniki uruchomien - kazdy trzyma lokalnie lub commituje swoje
+# Odkomentuj jesli chcesz ignorowac:
+# runs/auto/
+
+# Env
+.env
+*.env.local
+
+# OS
+.DS_Store
+Thumbs.db

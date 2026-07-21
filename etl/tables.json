@@ -31,6 +31,15 @@
       "exclude": []
     },
     {
+      "target": "opi_OrderProfitTag",
+      "db": "BIData", "schema": "opi", "table": "OrderProfitTag",
+      "watermark": "CreatedOnUtc",
+      "partition_by": "CreatedOnUtc",
+      "cluster_by": ["CustomerOrderId", "TagId"],
+      "_po_co": "Tabela PRZYCZYN: system sam taguje co poszlo nie tak (1=rozjazd kosztu wysylki, 34=opozniony dispatch, 35=WarehouseRequest do dostawcy, 38=wymuszony upgrade wysylki). Bez niej check mowi CO sie stalo, ale nie DLACZEGO.",
+      "exclude": []
+    },
+    {
       "target": "ofi_PriceOffer",
       "db": "BIData", "schema": "ofi", "table": "PriceOffer",
       "watermark": "LastUpdatedOnUtc",

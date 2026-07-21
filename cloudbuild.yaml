@@ -1,0 +1,15 @@
+# Build obrazu ETL i wypchniecie do Artifact Registry.
+#   gcloud builds submit --config=cloudbuild.yaml --project=erp-production-438714 .
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - etl/Dockerfile
+      - -t
+      - europe-north1-docker.pkg.dev/erp-production-438714/cloud-run-source-deploy/businesschecks/etl:latest
+      - .
+images:
+  - europe-north1-docker.pkg.dev/erp-production-438714/cloud-run-source-deploy/businesschecks/etl:latest
+options:
+  logging: CLOUD_LOGGING_ONLY

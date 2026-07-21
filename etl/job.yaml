@@ -6,10 +6,12 @@
 # Deploy:
 #   gcloud run jobs replace etl/job.yaml --region=europe-north1 --project=erp-production-438714
 #
-# Harmonogram co 8h (00:10, 08:10, 16:10 UTC):
+# Harmonogram co 8h (00:10, 08:10, 16:10 czasu warszawskiego) — ZALOZONY.
+# UWAGA: Cloud Scheduler NIE obsluguje europe-north1 (job tam stoi, ale trigger musi byc gdzie indziej).
+# Uzyta lokalizacja: europe-central2 (Warszawa).
 #   gcloud scheduler jobs create http bidata-bq-sync-trigger \
-#     --location=europe-north1 --project=erp-production-438714 \
-#     --schedule="10 */8 * * *" \
+#     --location=europe-central2 --project=erp-production-438714 \
+#     --schedule="10 */8 * * *" --time-zone="Europe/Warsaw" \
 #     --uri="https://europe-north1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/erp-production-438714/jobs/bidata-bq-sync:run" \
 #     --http-method=POST \
 #     --oauth-service-account-email=supplier-bots@erp-production-438714.iam.gserviceaccount.com
@@ -33,6 +35,10 @@ metadata:
     cloud.googleapis.com/location: europe-north1
   annotations:
     run.googleapis.com/launch-stage: BETA
+    # Cloud Run startuje kontenery ROWNOLEGLE. Bez tej zaleznosci ETL laczy sie do bazy
+    # zanim cloudflared postawi tunel i dostaje "Connection refused". Kod dodatkowo czeka
+    # (CONNECT_WAIT_S), ale zaleznosc zalatwia to na poziomie platformy.
+    run.googleapis.com/container-dependencies: '{"etl":["cloudflared"]}'
 spec:
   template:
     spec:
@@ -48,7 +54,17 @@ spec:
             # ── ETL ────────────────────────────────────────────────
             - name: etl
               image: europe-north1-docker.pkg.dev/erp-production-438714/cloud-run-source-deploy/businesschecks/etl:latest
-              args: ["--all"]
+              # Co 8h synchronizujemy TYLKO tabele, ktorych uzywaja checki.
+              # ofi_PriceOffer ma wlasny, DZIENNY trigger (bidata-bq-sync-priceoffer):
+              # to tabela goraca (8,3 z 14,8 mln wierszy zmienia sie na dobe), wiec jej MERGE
+              # skanuje ~14,5 GB i odpowiadal za ~75% kosztu calego automatu (26 z 35 zl/mies.).
+              # Zaden biezacy check jej nie potrzebuje poza buybox-sale-profitability.
+              args:
+                - --table=opi_OrderProfit
+                - --table=opi_OrderItemProfit
+                - --table=opi_ShippingCost
+                - --table=opi_OrderProfitTag
+                - --table=azymut_BookstoreProductPA
               resources:
                 limits:
                   cpu: "2"

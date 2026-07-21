@@ -43,6 +43,8 @@ OVERLAP_MIN = 10
 # Dlatego delta idzie porcjami — kazda krotka i ponawialna osobno.
 CHUNK_ROWS = 250_000
 RETRIES = 3
+# Ile czekac az sidecar cloudflared postawi tunel do bazy (Cloud Run startuje kontenery rownolegle).
+CONNECT_WAIT_S = float(os.environ.get("CONNECT_WAIT_S", "120"))
 MAX_SCAN_GB = float(os.environ.get("MAX_SCAN_GB", "20"))
 
 # SQL Server -> BigQuery. Kwoty jako NUMERIC (dokladne), nie FLOAT64.
@@ -66,15 +68,38 @@ def log(msg: str) -> None:
 # ─────────────────────────── SQL Server ───────────────────────────
 
 def connect(db: str):
+    """Laczy z SQL Server, czekajac az baza bedzie osiagalna.
+
+    W Cloud Run baza jest za sidecarem `cloudflared`, ktory potrzebuje kilku sekund na
+    postawienie listenera na 127.0.0.1:1433. Bez czekania glowny kontener startuje pierwszy
+    i dostaje "Connection refused (111)" — job wywala sie w calosci, mimo ze sekunde pozniej
+    tunel juz dziala. Dlatego ponawiamy do CONNECT_WAIT_S sekund.
+    """
     import pymssql
-    return pymssql.connect(
-        server=os.environ.get("SQL_HOST", "10.1.1.102"),
-        user=os.environ["SQL_USER"],
-        password=os.environ["SQL_PASS"],
-        database=db,
-        timeout=0,
-        login_timeout=30,
-    )
+    czekaj_do = time.monotonic() + CONNECT_WAIT_S
+    proba = 0
+    while True:
+        proba += 1
+        try:
+            return pymssql.connect(
+                server=os.environ.get("SQL_HOST", "10.1.1.102"),
+                user=os.environ["SQL_USER"],
+                password=os.environ["SQL_PASS"],
+                database=db,
+                timeout=0,
+                login_timeout=30,
+                # Kolumny varchar trzymaja polskie znaki w CP1250. Domyslne UTF-8 dawalo
+                # "konsumowa³o" zamiast "konsumowało" — czyli mirror rozjezdzal sie ze
+                # zrodlem na kazdym polu tekstowym (Note w tagach, Reason w PriceOffer).
+                # Zweryfikowane empirycznie: UTF-8 i LATIN1 psuja, CP1250 odtwarza poprawnie.
+                charset="CP1250",
+            )
+        except Exception as e:
+            if time.monotonic() >= czekaj_do:
+                raise
+            if proba == 1:
+                log(f"    baza jeszcze nieosiagalna, czekam na tunel (do {CONNECT_WAIT_S}s)")
+            time.sleep(3)
 
 
 def describe(conn, schema: str, table: str, exclude: list[str]) -> tuple[list[dict], list[str]]:

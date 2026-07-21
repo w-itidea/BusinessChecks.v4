@@ -49,7 +49,20 @@ runs/             # wyniki uruchomien
 |---|---|---|---|
 | `stratne-daily` | stratne zamowienia z doby + sklasyfikowana przyczyna | 0,00 GB | `~/.claude/cron/stratne_slack.sh` |
 | `stratne-wzorce` | agregat strat per przyczyna i rynek ("gdzie krwawimy systematycznie") | 0,00 GB | sekcja "Wzorce" z tego samego crona |
+| `stratne-przyczyny` | PRZYCZYNY strat per tag systemowy (dlaczego, nie co) | 0,08 GB | — (nowy) |
 | `buybox-sale-profitability` | Buy Box + zyskownosc kohorty sale EU | 0,78 GB | — (nowy) |
+
+### Kubel vs przyczyna
+
+`stratne-daily` mowi RODZAJ straty ("wysylka zjada marze"). `stratne-przyczyny` mowi POWOD,
+bo siega do `opi_OrderProfitTag` — tabeli, w ktorej systemy same zapisuja co poszlo nie tak.
+
+Czytaj obie kolumny osobno, bo opisuja rozne problemy:
+- **suma straty** — wyciek systemowy (rozjazd estymacji kosztow: tagi 1/10/13/16, ~77% strat);
+  duzo drobnych ubytkow po -6..-10 zl, naprawa poprawia wszystko po trochu
+- **srednia na zamowienie** — przypadki rzadkie, ale ciezkie: wymiary zgadywane (tag 24, -32,58/zam.),
+  awaryjny stock bez faktury (tag 40, -29,38), zalegacze >365 dni (tag 33, -17,04); kazdy da sie
+  zablokowac punktowo
 
 ```bash
 python3 -m runner.run_check --check stratne-daily              # policz i pokaz

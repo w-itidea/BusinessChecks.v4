@@ -1,0 +1,52 @@
+# Cloud Run Job: dzienny raport checkow -> Slack DM Wojtka.
+# Zastepuje ~/.claude/cron/stratne_slack.sh (headless `claude -p` na laptopie).
+#
+# BEZ sidecara cloudflared i BEZ sekretu do SQL — checki czytaja wylacznie BigQuery,
+# wiec nie potrzebuja ani tunelu, ani bazy. To jest cala korzysc z warstwy mirrora.
+#
+# Deploy:
+#   gcloud run jobs replace runner/job.yaml --region=europe-north1 --project=erp-production-438714
+# Trigger (8:03 czasu warszawskiego, jak stary cron):
+#   gcloud scheduler jobs create http businesschecks-daily-trigger \
+#     --location=europe-central2 --project=erp-production-438714 \
+#     --schedule="3 8 * * *" --time-zone="Europe/Warsaw" \
+#     --uri="https://europe-north1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/erp-production-438714/jobs/businesschecks-daily:run" \
+#     --http-method=POST \
+#     --oauth-service-account-email=businesschecks@erp-production-438714.iam.gserviceaccount.com
+
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: businesschecks-daily
+  labels:
+    cloud.googleapis.com/location: europe-north1
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+spec:
+  template:
+    spec:
+      parallelism: 1
+      taskCount: 1
+      template:
+        spec:
+          serviceAccountName: businesschecks@erp-production-438714.iam.gserviceaccount.com
+          timeoutSeconds: 900
+          maxRetries: 1
+          containers:
+            - name: checks
+              image: europe-north1-docker.pkg.dev/erp-production-438714/cloud-run-source-deploy/businesschecks/etl:latest
+              args:
+                - -m
+                - runner.run_check
+                - --tytul=Stratne zamówienia — raport dzienny
+                - --check=stratne-daily
+                - --check=stratne-wzorce
+                - --check=stratne-przyczyny
+                - --send=U03787T2DTR          # DM Wojtka
+              resources:
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+              env:
+                - name: MAX_SCAN_GB
+                  value: "20"

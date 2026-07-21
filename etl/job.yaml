@@ -60,6 +60,8 @@ spec:
               # skanuje ~14,5 GB i odpowiadal za ~75% kosztu calego automatu (26 z 35 zl/mies.).
               # Zaden biezacy check jej nie potrzebuje poza buybox-sale-profitability.
               args:
+                - -m
+                - etl.sync
                 - --table=opi_OrderProfit
                 - --table=opi_OrderItemProfit
                 - --table=opi_ShippingCost

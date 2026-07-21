@@ -16,6 +16,7 @@ Slack: token bota `ola` z GCP Secret Manager (cred-api-slack-ola, projekt erp-pr
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import re
 import subprocess
@@ -124,27 +125,42 @@ def wyslij(kanal: str, tekst: str) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--check", required=True)
+    ap.add_argument("--check", action="append", required=True,
+                    help="nazwa checku; mozna podac wielokrotnie (jedna wiadomosc na Slacku)")
     ap.add_argument("--send", help="channel_id lub user_id (DM)")
+    ap.add_argument("--tytul", default="Raport dzienny", help="naglowek wiadomosci na Slacku")
     ap.add_argument("--dry-run", action="store_true", help="policz koszt skanu i zakoncz")
     a = ap.parse_args()
 
-    sql = znajdz_sql(a.check).read_text(encoding="utf-8")
-    sprawdz_gwiazdke(sql)
-    gb = koszt_skanu(sql)
-    print(f"skan: {gb:.3f} GB (~{gb * 5 / 1024 * 4:.3f} zl)")
-    if gb > MAX_SCAN_GB:
-        raise SystemExit(f"BEZPIECZNIK: {gb:.1f} GB > limit {MAX_SCAN_GB} GB — przerwane")
+    czesci, gb_razem, bledy = [], 0.0, []
+    for nazwa in a.check:
+        try:
+            sql = znajdz_sql(nazwa).read_text(encoding="utf-8")
+            sprawdz_gwiazdke(sql)
+            gb = koszt_skanu(sql)
+            gb_razem += gb
+            print(f"[{nazwa}] skan: {gb:.3f} GB (~{gb * 5 / 1024 * 4:.3f} zl)")
+            if gb > MAX_SCAN_GB:
+                raise SystemExit(f"BEZPIECZNIK: {gb:.1f} GB > limit {MAX_SCAN_GB} GB — przerwane")
+            if a.dry_run:
+                continue
+            tabela = jako_tabela(wykonaj(sql))
+            print(f"── {nazwa} ──\n{tabela}\n")
+            czesci.append(f"*{nazwa}*\n```\n{tabela}\n```")
+        except SystemExit:
+            raise
+        except Exception as e:                  # jeden check nie moze zabic calego raportu
+            print(f"[{nazwa}] BLAD: {e}")
+            bledy.append(f"*{nazwa}* — błąd: `{str(e).splitlines()[0][:120]}`")
+
     if a.dry_run:
         return 0
 
-    wiersze = wykonaj(sql)
-    tabela = jako_tabela(wiersze)
-    print(tabela)
-
-    if a.send:
-        wyslij(a.send, f"*Check: {a.check}*\n```\n{tabela}\n```\n_skan {gb:.2f} GB_")
-    return 0
+    if a.send and (czesci or bledy):
+        naglowek = f"*{a.tytul}* — {dt.date.today():%Y-%m-%d}"
+        stopka = f"_skan {gb_razem:.2f} GB (~{gb_razem * 5 / 1024 * 4:.3f} zł)_"
+        wyslij(a.send, "\n\n".join([naglowek, *czesci, *bledy, stopka]))
+    return 1 if bledy else 0
 
 
 if __name__ == "__main__":

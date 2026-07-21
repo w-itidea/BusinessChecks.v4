@@ -140,8 +140,6 @@ def describe(conn, schema: str, table: str, exclude: list[str]) -> tuple[list[di
         (schema, table),
     )
     pk = [r["nazwa"] for r in cur.fetchall()]
-    if not pk:
-        raise RuntimeError(f"{schema}.{table}: brak klucza glownego - nie da sie zrobic MERGE")
     return kolumny, pk
 
 
@@ -156,7 +154,11 @@ def serialize(v):
         return v.isoformat()
     if isinstance(v, (bytes, bytearray)):
         return None
-    return v
+    if isinstance(v, (str, int, float, bool)):
+        return v
+    # uniqueidentifier wraca jako uuid.UUID, a JSON go nie zna. Zamiast dokladac typ po typie,
+    # wszystko nieznane idzie jako tekst — kolumna i tak jest zmapowana na STRING w BQ.
+    return str(v)
 
 
 def pull(conn, cfg: dict, kolumny: list[dict], watermark: str | None, out_dir: Path) -> tuple[int, list[Path]]:
@@ -346,14 +348,21 @@ def sync_table(cfg: dict, conf: dict, dry: bool) -> dict:
     conn = connect(cfg["db"])
     try:
         kolumny, pk = describe(conn, cfg["schema"], cfg["table"], cfg.get("exclude") or [])
-        log(f"  kolumn: {len(kolumny)}, PK: {', '.join(pk)}")
+
+        # Tabela bez PK nie da sie MERGE-owac. Dla malych tabel (BolOffersFirstOffer: 112 tys.
+        # wierszy, 17 MB) najprostsze i najtansze jest pelne przeladowanie: bq load jest darmowy,
+        # a brak MERGE oznacza zero skanu. Wlacza sie samo albo jawnie przez "pelny_reload".
+        pelny = cfg.get("pelny_reload") or not pk
+        if pelny and not pk:
+            log("  brak PK -> pelne przeladowanie przy kazdym przebiegu (tabela mala, load = 0 zl)")
+        log(f"  kolumn: {len(kolumny)}, PK: {', '.join(pk) if pk else '(brak)'}")
 
         ensure_dataset(conf["project"], conf["dataset"], conf["location"])
         swieza = not table_exists(conf["project"], conf["dataset"], cfg["target"])
         if swieza and not dry:
             create_table(cfg, conf, kolumny)
 
-        wm = None if swieza else get_watermark(cfg, conf)
+        wm = None if (swieza or pelny) else get_watermark(cfg, conf)
         log(f"  watermark: {wm or 'BRAK -> pelny load poczatkowy'}")
         if dry:
             return {"target": cfg["target"], "wierszy": None, "tryb": "dry-run"}
@@ -366,7 +375,7 @@ def sync_table(cfg: dict, conf: dict, dry: bool) -> dict:
             if n == 0:
                 return {"target": cfg["target"], "wierszy": 0}
             if wm is None:
-                # Load poczatkowy: cel jest pusty, wiec nie ma czego dopasowywac.
+                # Load poczatkowy albo pelne przeladowanie: nie ma czego dopasowywac.
                 # Ladujemy prosto do celu i pomijamy MERGE — bq load jest darmowy,
                 # a MERGE na 14 mln wierszy kosztowalby skan kilkunastu GB bez zadnego zysku.
                 log("  cel pusty -> ladowanie bezposrednie, MERGE pominiety (skan 0 zl)")

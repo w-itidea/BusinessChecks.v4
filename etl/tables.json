@@ -49,6 +49,34 @@
       "exclude": ["Json", "PriceAvailabilityHash"]
     },
     {
+      "target": "mka_BolBuyBox",
+      "db": "BIData", "schema": "mka", "table": "BolBuyBox",
+      "watermark": "LastModifiedOnUtc",
+      "partition_by": null,
+      "cluster_by": ["Ean"],
+      "_po_co": "Buy box na BOL — kto trzyma ofertę i po jakiej cenie. Nasz RetailerId = 1834699.",
+      "exclude": []
+    },
+    {
+      "target": "ofi_AmazonFeedProductSettings",
+      "db": "BIData", "schema": "ofi", "table": "AmazonFeedProductSettings",
+      "watermark": "LastModifiedOnUtc",
+      "partition_by": null,
+      "cluster_by": ["OurEan", "BookstoreId"],
+      "_po_co": "ŻYWA tabela ustawień oferty (ForcedPrice/ExtraMargin/TestGroupName). azymut.amz.AmazonFeedProductSettings jest MARTWA — nie używać.",
+      "exclude": []
+    },
+    {
+      "target": "azymut_BolOffersFirstOffer",
+      "db": "azymut", "schema": "dbo", "table": "BolOffersFirstOffer",
+      "watermark": "MutationDateTime",
+      "partition_by": null,
+      "cluster_by": [],
+      "pelny_reload": true,
+      "_po_co": "Oferty BOL. BRAK klucza głównego -> pełne przeładowanie (112 tys. wierszy, 17 MB, load darmowy).",
+      "exclude": []
+    },
+    {
       "target": "azymut_BookstoreProductPA",
       "db": "azymut", "schema": "dbo", "table": "BookstoreProductPA",
       "watermark": "LastModifiedOnUtc",

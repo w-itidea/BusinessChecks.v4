@@ -33,12 +33,42 @@ Szczegoly: [analyzer/README.md](analyzer/README.md)
 ## Struktura
 
 ```
+etl/              # mirror SQL Server -> BigQuery (dataset BIData @ europe-west3)
+runner/           # wykonanie checku: SQL -> BigQuery -> tabelka -> Slack (bot ola)
+sql/reports/      # checki (jeden plik = jeden check)
+sql/diagnostic/   # SQL-e do recznego drazenia
 checklists/       # szablony checklistow do kopiowania i odhaczania
 knowledge/        # baza wiedzy - opisy systemow, architektura, przyklady
-analyzer/         # config i definicje checkow dla automatycznego schedulera
-sql/              # gotowe SQL-e diagnostyczne i raportowe
-runs/             # wyniki uruchomien (recznych i automatycznych)
+analyzer/         # config dla wersji z AI (na razie nieuzywany - patrz nizej)
+runs/             # wyniki uruchomien
 ```
+
+## Checki
+
+| Check | Co liczy | Skan | Zastepuje |
+|---|---|---|---|
+| `stratne-daily` | stratne zamowienia z doby + sklasyfikowana przyczyna | 0,00 GB | `~/.claude/cron/stratne_slack.sh` |
+| `stratne-wzorce` | agregat strat per przyczyna i rynek ("gdzie krwawimy systematycznie") | 0,00 GB | sekcja "Wzorce" z tego samego crona |
+| `buybox-sale-profitability` | Buy Box + zyskownosc kohorty sale EU | 0,78 GB | — (nowy) |
+
+```bash
+python3 -m runner.run_check --check stratne-daily              # policz i pokaz
+python3 -m runner.run_check --check stratne-daily --send U03787T2DTR   # + Slack
+python3 -m runner.run_check --check stratne-daily --dry-run    # sam koszt skanu
+```
+
+### Dlaczego bez AI
+
+Stary cron odpalal `claude -p` z promptem, ktory prosil model o policzenie strat i opisanie
+wzorcow. To znaczylo: koszt tokenow codziennie, wynik nieporownywalny miedzy dniami (model
+za kazdym razem inaczej grupuje) i awaria, gdy laptop byl wylaczony albo VPN padl.
+
+Tu klasyfikacja przyczyny jest w SQL — te same progi zawsze, wiec trendy sa porownywalne.
+Model ma sens dopiero przy eskalacji (przekroczony prog CRITICAL), i to jest osobny krok.
+
+⚠️ Klasyfikacja jest celowo prosta i to widac: wiekszosc zamowien wpada w kubel
+`inne / zlozone` (36 z 42 w probce), choc wartosciowo dominuje `wysylka zjada marze`.
+Kubly lapia wiec *pieniadze*, ale nie *liczbe przypadkow* — do dopracowania na wiekszej probie.
 
 ## Konwencje
 

@@ -1,0 +1,52 @@
+{
+  "_komentarz": "Rejestr tabel synchronizowanych SQL Server -> BigQuery. Klucz glowny (PK) i kolumny sa wykrywane automatycznie z katalogu zrodla; tutaj tylko to, czego nie da sie wywnioskowac.",
+  "project": "polish-bookstores-group",
+  "dataset": "BIData",
+  "location": "europe-west3",
+  "staging_suffix": "_staging",
+
+  "tables": [
+    {
+      "target": "opi_OrderProfit",
+      "db": "BIData", "schema": "opi", "table": "OrderProfit",
+      "watermark": "LastUpdatedOnUtc",
+      "partition_by": "OrderCreatedOnUtc",
+      "cluster_by": ["IdBookstore", "CustomerOrderId"],
+      "exclude": []
+    },
+    {
+      "target": "opi_OrderItemProfit",
+      "db": "BIData", "schema": "opi", "table": "OrderItemProfit",
+      "watermark": "LastUpdateOnUtc",
+      "partition_by": null,
+      "cluster_by": ["CustomerOrderId", "EAN"],
+      "exclude": []
+    },
+    {
+      "target": "opi_ShippingCost",
+      "db": "BIData", "schema": "opi", "table": "ShippingCost",
+      "watermark": "LastUpdatedOnUtc",
+      "partition_by": null,
+      "cluster_by": ["CustomerOrderId"],
+      "exclude": []
+    },
+    {
+      "target": "ofi_PriceOffer",
+      "db": "BIData", "schema": "ofi", "table": "PriceOffer",
+      "watermark": "LastUpdatedOnUtc",
+      "partition_by": null,
+      "cluster_by": ["BookstoreId", "OurEan"],
+      "_exclude_why": "Json = varchar(max) z pelnym feedem (ogromny, nieuzywany w analizie); PriceAvailabilityHash = varbinary (BQ nie potrzebuje)",
+      "exclude": ["Json", "PriceAvailabilityHash"]
+    },
+    {
+      "target": "azymut_BookstoreProductPA",
+      "db": "azymut", "schema": "dbo", "table": "BookstoreProductPA",
+      "watermark": "LastModifiedOnUtc",
+      "partition_by": null,
+      "cluster_by": ["EAN"],
+      "_uwaga": "PK = EAN. fRowHash (varbinary) jest pomijany automatycznie - BQ go nie potrzebuje.",
+      "exclude": []
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+# Cloud Run Job: delta sync BIData/azymut -> BigQuery (dataset BIData @ europe-west3).
+#
+# Wzorzec skopiowany z ItIdea.Supplier.Bots/deploy/jobs/dedalus.yaml — sidecar cloudflared
+# daje dostep do SQL Server spoza VPN, wiec job nie potrzebuje wlaczonego laptopa.
+#
+# Deploy:
+#   gcloud run jobs replace etl/job.yaml --region=europe-north1 --project=erp-production-438714
+#
+# Harmonogram co 8h (00:10, 08:10, 16:10 UTC):
+#   gcloud scheduler jobs create http bidata-bq-sync-trigger \
+#     --location=europe-north1 --project=erp-production-438714 \
+#     --schedule="10 */8 * * *" \
+#     --uri="https://europe-north1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/erp-production-438714/jobs/bidata-bq-sync:run" \
+#     --http-method=POST \
+#     --oauth-service-account-email=supplier-bots@erp-production-438714.iam.gserviceaccount.com
+#
+# WYMAGA (do potwierdzenia przed deployem):
+#   * sekret z haslem readonly do SQL Server — nazwa ponizej to propozycja wg konwencji
+#     z ~/.claude/SECRETS.md; jesli nie istnieje, trzeba go zalozyc
+#   * WLASNE konto serwisowe dla businesschecks (Wojtek zaklada osobno — NIE pozyczamy
+#     supplier-bots@, bo to inny cykl zycia i inne uprawnienia). Role dla niego:
+#       - roles/secretmanager.secretAccessor   (erp-production-438714: haslo SQL + tokeny tunelu)
+#       - roles/bigquery.dataEditor            (polish-bookstores-group — CROSS-PROJECT, latwe do przeoczenia)
+#       - roles/bigquery.jobUser               (polish-bookstores-group)
+#       - roles/artifactregistry.reader        (erp-production-438714)
+#     Po zalozeniu podmien serviceAccountName ponizej.
+
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: bidata-bq-sync
+  labels:
+    cloud.googleapis.com/location: europe-north1
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+spec:
+  template:
+    spec:
+      parallelism: 1
+      taskCount: 1
+      template:
+        spec:
+          # PLACEHOLDER — podmien na konto zalozone dla businesschecks (patrz naglowek).
+          serviceAccountName: businesschecks@erp-production-438714.iam.gserviceaccount.com
+          timeoutSeconds: 3600
+          maxRetries: 1
+          containers:
+            # ── ETL ────────────────────────────────────────────────
+            - name: etl
+              image: europe-north1-docker.pkg.dev/erp-production-438714/cloud-run-source-deploy/businesschecks/etl:latest
+              args: ["--all"]
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 4Gi
+              env:
+                # Ruch do bazy idzie przez sidecar cloudflared na localhoscie
+                - name: SQL_HOST
+                  value: "127.0.0.1"
+                - name: SQL_USER
+                  value: "claude_readonly"
+                - name: SQL_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: db-mssql-azymut-readonly-password
+                      key: latest
+                # Bezpiecznik kosztowy — MERGE/watermark ponad ten skan przerywa robote
+                - name: MAX_SCAN_GB
+                  value: "20"
+
+            # ── tunel do SQL Server (sql.fkwt.pl) ──────────────────
+            - name: cloudflared
+              image: cloudflare/cloudflared:latest
+              args:
+                - access
+                - tcp
+                - --hostname=sql.fkwt.pl
+                - --url=127.0.0.1:1433
+              resources:
+                limits:
+                  cpu: "1"
+                  memory: 512Mi
+              env:
+                - name: TUNNEL_SERVICE_TOKEN_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: cred-api-cf-tunnel-fkwt-id
+                      key: latest
+                - name: TUNNEL_SERVICE_TOKEN_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: cred-api-cf-tunnel-fkwt-secret
+                      key: latest

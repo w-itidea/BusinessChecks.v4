@@ -18,12 +18,23 @@ np. scrapując własne wiadomości ze Slacka.
 | `opi_OrderProfit` | `BIData.opi.OrderProfit` | `CustomerOrderId` | `LastUpdatedOnUtc` |
 | `opi_OrderItemProfit` | `BIData.opi.OrderItemProfit` | `Id` | `LastUpdateOnUtc` |
 | `opi_ShippingCost` | `BIData.opi.ShippingCost` | `CustomerOrderId` | `LastUpdatedOnUtc` |
+| `opi_OrderProfitTag` | `BIData.opi.OrderProfitTag` | `Id` | `CreatedOnUtc` |
 | `ofi_PriceOffer` | `BIData.ofi.PriceOffer` | `Id` | `LastUpdatedOnUtc` |
+| `ofi_AmazonFeedProductSettings` | `BIData.ofi.AmazonFeedProductSettings` | `Id` | `LastModifiedOnUtc` |
 | `azymut_BookstoreProductPA` | `azymut.dbo.BookstoreProductPA` | `EAN` | `LastModifiedOnUtc` |
+| ~~`mka_BolBuyBox`~~ | `BIData.mka.BolBuyBox` | `Ean, MarketplaceId` | `LastModifiedOnUtc` |
+| ~~`azymut_BolOffersFirstOffer`~~ | `azymut.dbo.BolOffersFirstOffer` | brak PK → pełny reload | `MutationDateTime` |
 
 Kolumny i klucz główny są **wykrywane z katalogu źródła** przy każdym przebiegu — dodanie kolumny
 w SQL Serverze nie wymaga zmiany kodu. Konfiguracja (`tables.json`) trzyma tylko to, czego nie da
-się wywnioskować: watermark, partycję, klastrowanie i wykluczenia.
+się wywnioskować: watermark, partycję, klastrowanie i wykluczenia. Tabele bez klucza głównego
+(`azymut_BolOffersFirstOffer`) idą przez **pełne przeładowanie** zamiast MERGE (małe, `bq load` darmowy).
+
+> ⚠️ **`mka_BolBuyBox` i `azymut_BolOffersFirstOffer` są do wycofania (2026-07-23).** Były mirrorem
+> stanu bieżącego BOL, bo prawdziwe dane BOL leżały w lokalizacji `EU` i nie joinowały się z
+> `europe-west3`. Szymon przeniósł je do **`itideatestproject.bol_ew3`** (europe-west3, z historią
+> dzienną) — teraz joinują się natywnie. Po przełączeniu checków BOL na `bol_ew3` usunąć te dwa
+> wpisy z `tables.json`. Patrz `../docs/bol-ew3.md`.
 
 ## Czym różni się od poprzedniej wersji
 

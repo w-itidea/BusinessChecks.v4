@@ -1,91 +1,157 @@
-# BusinessChecks.v4
+# BusinessChecks
 
-Prosty system checklistow biznesowych oparty na plikach Markdown.
-Synchronizowany przez git, analizowany automatycznie przez Claude API.
+System kontroli biznesowych na danych w BigQuery. Jeden check = jeden plik SQL,
+liczony w chmurze, wysyłany na Slacka. Bez VPN, bez włączonego laptopa, bez AI w pętli.
 
-## Jak uzywac
+> **Skąd się wziął.** Wcześniej analizy żyły jako ~1000 jednorazowych plików SQL w
+> `~/.claude/projects/ClaudeSQLs/` i sześć lokalnych cronów odpalających `claude -p` z
+> promptem w środku. Każda analiza umierała po sesji; każdy cron wymagał włączonego laptopa,
+> VPN-a i zalogowanego CLI, a wynik był nieporównywalny między dniami (model za każdym razem
+> inaczej grupował). Ten projekt zamienia to na: **warstwę danych** (mirror do BigQuery),
+> **deterministyczny runner** (SQL → tabelka → Slack) i **automat w chmurze** (Cloud Run,
+> niezależny od laptopa).
 
-### Reczna analiza (konsola)
+---
 
-1. Skopiuj checklist do nowego pliku z data:
-```bash
-cp checklists/order-profit.md "runs/order-profit-2026-04-02.md"
+## Architektura
+
+```
+SQL Server (za VPN)                    BigQuery @ europe-west3
+  BIData.opi.*        ──ETL co 8h──▶     polish-bookstores-group.BIData.*
+  BIData.ofi.*                              │
+  azymut.dbo.*                              │  (joinuje się natywnie — ten sam region)
+                                            ▼
+  itideatestproject.bol_ew3.*  ────────▶  runner/run_check.py
+  AwsMarketPlace.*             ────────▶     │  SQL → dry-run (koszt) → wykonaj → tabelka
+  amazon_catalog.*             ────────▶     ▼
+                                          Slack (bot ola)
 ```
 
-2. Edytuj plik - odhaczaj kroki, wpisuj wyniki:
-```bash
-vim "runs/order-profit-2026-04-02.md"
-```
+- **ETL** (`etl/`) — mirror SQL Server → BQ, sidecar `cloudflared` (bez VPN). Cloud Run co 8 h.
+- **Runner** (`runner/`) — wykonuje check: `--dry_run` liczy koszt, twardy limit skanu,
+  blokada `SELECT *` na dużych tabelach, wysyłka botem `ola`.
+- **Checki** (`sql/reports/`) — jeden plik SQL na check. Klasyfikacja w SQL, nie w prompcie.
 
-3. Commituj i pushuj - drugi user widzi postep:
-```bash
-git add runs/ && git commit -m "order-profit check 2026-04-02: 3 straty wykryte"
-git push
-```
+---
 
-### Automatyczny analyzer (scheduler)
+## ✅ Co działa (stan 2026-07-23)
 
-Analyzer uruchamia Claude API z checkami zdefiniowanymi w `analyzer/config.yaml`.
-Wyniki laduja do `runs/auto/`.
+### Dane w BQ — `polish-bookstores-group.BIData` @ europe-west3
 
-Szczegoly: [analyzer/README.md](analyzer/README.md)
+| Tabela | Wierszy | Źródło | Odświeżanie |
+|---|---|---|---|
+| `opi_OrderProfit` | 1,56 mln | `BIData.opi.OrderProfit` | co 8 h |
+| `opi_OrderItemProfit` | 2,42 mln | `BIData.opi.OrderItemProfit` | co 8 h |
+| `opi_ShippingCost` | 1,54 mln | `BIData.opi.ShippingCost` | co 8 h |
+| `opi_OrderProfitTag` | 0,67 mln | `BIData.opi.OrderProfitTag` — **tabela przyczyn** | co 8 h |
+| `ofi_PriceOffer` | 14,77 mln | `BIData.ofi.PriceOffer` | **raz dziennie** (5:40) — koszt |
+| `ofi_AmazonFeedProductSettings` | 96 tys. | żywa tabela ustawień oferty | co 8 h |
+| `azymut_BookstoreProductPA` | 1,31 mln | `azymut.dbo.BookstoreProductPA` | co 8 h |
+| `fosa_ab_cohort` | 20 tys. | statyczna kohorta testu A/B | — |
+
+### Automat w chmurze (`erp-production-438714`)
+
+Konto serwisowe: `businesschecks@erp-production-438714.iam.gserviceaccount.com`.
+
+| Trigger (europe-central2) | Harmonogram | Co robi |
+|---|---|---|
+| `bidata-bq-sync-trigger` | co 8 h (00/08/16:10) | ETL — 8 tabel `BIData`/`azymut` → BQ |
+| `bidata-bq-sync-priceoffer` | 5:40 | ETL — sam `ofi_PriceOffer` (jego MERGE = 75% kosztu) |
+| `businesschecks-daily-trigger` | 8:03 codziennie | raport stratnych (3 checki) → DM Wojtka |
+| `businesschecks-bol-trigger` | pon+czw 8:07 | pilot BOL buy-box |
+| `businesschecks-fosa-trigger` | pon 8:21 | test A/B fosa |
+
+> ⚠️ Cloud Scheduler **nie obsługuje `europe-north1`** — joby stoją w europe-north1,
+> triggery muszą być w `europe-central2`.
+
+### Checki
+
+| Check | Co liczy | Skan | Uwaga |
+|---|---|---|---|
+| `stratne-daily` | stratne zamówienia z doby + przyczyna + próg istotności | 0,00 GB | zastępuje `stratne_slack.sh` |
+| `stratne-wzorce` | agregat strat per przyczyna i rynek | 0,00 GB | — |
+| `stratne-przyczyny` | przyczyny z `opi_OrderProfitTag` (dlaczego, nie co) | 0,08 GB | — |
+| `rozjazd-wyceny` | rozjazd estymacji vs rzeczywistość na **wszystkich** zamówieniach | 0,06 GB | 91% pieniędzy w zyskownych |
+| `rozjazd-wysylki-wzorce` | gdzie estymacja wysyłki myli się systematycznie | 0,09 GB | — |
+| `bol-buybox` | pilot BOL buy-box + propagacja forced ceny | 0,07 GB | zastępuje `bol_buybox_slack.sh` |
+| `fosa-ab` | test A/B fosa (+4% ExtraMargin), diff-in-diff per dobę | 0,15 GB | zastępuje `fosa_ab_slack.sh` |
+| `buybox-sale-profitability` | Buy Box + zyskowność kohorty sale EU | 0,78 GB | — |
+
+Koszt całości: ~18 zł/mies. (storage grosze + skany; `bq load` darmowy).
+
+### Wnioski z analiz — `runs/`
+
+Trwały zapis ustaleń (co zmierzone, wniosek, **decyzja**, **zastrzeżenia**, otwarte pytania).
+Patrz `runs/README.md`. Trzy pierwsze: rozjazd wyceny (~44 tys. zł/mies.), test sale EU
+(747 Buy Boxów → 2 sztuki), przyczyny strat wg tagów.
+
+---
+
+## 🔵 Co do zrobienia
+
+- [ ] **Przełączyć checki BOL z mirrora na `itideatestproject.bol_ew3`.** Szymon przeniósł
+      dane BOL do europe-west3 (2026-07-23) — teraz joinują się natywnie i mają **historię
+      dzienną** (5 mln wierszy `BolBuyBox`), której mirror `mka_BolBuyBox` nie ma. Po
+      przełączeniu: usunąć z ETL `mka_BolBuyBox` i `azymut_BolOffersFirstOffer` (`our_offers`
+      w bol_ew3 je zastępuje). Patrz `docs/bol-ew3.md`.
+- [ ] **Wyłączyć stare crony lokalne** — `stratne_slack.sh`, `bol_buybox_slack.sh`,
+      `fosa_ab_slack.sh` chodzą **równolegle** z chmurą do porównania. Wyłączyć po 2–3 zielonych
+      przebiegach chmury. `marvel` i `fosa` (lokalne) mają self-limit 5 — wygasną same.
+- [ ] **Rutyna claude.ai + konektor BigQuery** — żeby sprawdzać checki z przeglądarki i żeby
+      rutyna „analiza stratnych" liczyła z BQ zamiast scrapować własne digesty ze Slacka.
+      Blokada: autoryzacja konektora BigQuery na koncie. Patrz `docs/skille-i-rutyny.md`.
+- [ ] **Dopracować klasyfikację `inne / zlozone`** — przy progu istotności kubeł jest już
+      użyteczny, ale to nadal ~połowa pieniędzy bez dominującej przyczyny (patrz
+      `runs/2026-07-21-przyczyny-strat.md`).
+- [ ] **Zbieranie odpowiedzi ze Slacka** — gdy człowiek odpowie na pytanie automatu w wątku,
+      zapisać odpowiedź (→ ClickUp jako zadanie, gdy implikuje zmianę). Wymaga `groups:history`
+      dla bota `ola` albo rutyny czytającej jako Wojtek. Patrz `docs/skille-i-rutyny.md`.
+
+---
 
 ## Struktura
 
 ```
-etl/              # mirror SQL Server -> BigQuery (dataset BIData @ europe-west3)
-runner/           # wykonanie checku: SQL -> BigQuery -> tabelka -> Slack (bot ola)
+etl/              # mirror SQL Server → BigQuery (sync.py, tables.json, job.yaml, Dockerfile)
+runner/           # run_check.py — wykonanie checku → Slack; job.yaml (raport dzienny)
 sql/reports/      # checki (jeden plik = jeden check)
-sql/diagnostic/   # SQL-e do recznego drazenia
-checklists/       # szablony checklistow do kopiowania i odhaczania
-knowledge/        # baza wiedzy - opisy systemow, architektura, przyklady
-analyzer/         # config dla wersji z AI (na razie nieuzywany - patrz nizej)
-runs/             # wyniki uruchomien
+sql/diagnostic/   # SQL-e do ręcznego drążenia (nie wysyłane)
+runs/             # wnioski z analiz — trwały zapis ustaleń (patrz runs/README.md)
+docs/             # architektura, bol-ew3, jak robić skille i rutyny
+knowledge/        # baza wiedzy domenowej
+.claude/skills/   # skille: businesscheck, wniosek
+cloudbuild.yaml   # build obrazu ETL+runner → Artifact Registry
+checklists/, analyzer/   # ⚠️ pozostałość po wersji "checklisty MD" — nieużywane
 ```
 
-## Checki
+---
 
-| Check | Co liczy | Skan | Zastepuje |
-|---|---|---|---|
-| `stratne-daily` | stratne zamowienia z doby + sklasyfikowana przyczyna | 0,00 GB | `~/.claude/cron/stratne_slack.sh` |
-| `stratne-wzorce` | agregat strat per przyczyna i rynek ("gdzie krwawimy systematycznie") | 0,00 GB | sekcja "Wzorce" z tego samego crona |
-| `stratne-przyczyny` | PRZYCZYNY strat per tag systemowy (dlaczego, nie co) | 0,08 GB | — (nowy) |
-| `buybox-sale-profitability` | Buy Box + zyskownosc kohorty sale EU | 0,78 GB | — (nowy) |
-
-### Kubel vs przyczyna
-
-`stratne-daily` mowi RODZAJ straty ("wysylka zjada marze"). `stratne-przyczyny` mowi POWOD,
-bo siega do `opi_OrderProfitTag` — tabeli, w ktorej systemy same zapisuja co poszlo nie tak.
-
-Czytaj obie kolumny osobno, bo opisuja rozne problemy:
-- **suma straty** — wyciek systemowy (rozjazd estymacji kosztow: tagi 1/10/13/16, ~77% strat);
-  duzo drobnych ubytkow po -6..-10 zl, naprawa poprawia wszystko po trochu
-- **srednia na zamowienie** — przypadki rzadkie, ale ciezkie: wymiary zgadywane (tag 24, -32,58/zam.),
-  awaryjny stock bez faktury (tag 40, -29,38), zalegacze >365 dni (tag 33, -17,04); kazdy da sie
-  zablokowac punktowo
+## Uruchomienie
 
 ```bash
-python3 -m runner.run_check --check stratne-daily              # policz i pokaz
-python3 -m runner.run_check --check stratne-daily --send U03787T2DTR   # + Slack
+cd ~/RiderProjects/businesschecks.v4
+
+# check lokalnie
+python3 -m runner.run_check --check stratne-daily              # policz i pokaż
+python3 -m runner.run_check --check stratne-daily --send U03787T2DTR   # + Slack DM
 python3 -m runner.run_check --check stratne-daily --dry-run    # sam koszt skanu
+
+# ETL lokalnie (wymaga VPN + SQL_USER/SQL_PASS)
+SQL_USER=claude_readonly SQL_PASS='...' python3 -m etl.sync --all
 ```
 
-### Dlaczego bez AI
+Szczegóły ETL: [`etl/README.md`](etl/README.md). Skille i rutyny: [`docs/skille-i-rutyny.md`](docs/skille-i-rutyny.md).
 
-Stary cron odpalal `claude -p` z promptem, ktory prosil model o policzenie strat i opisanie
-wzorcow. To znaczylo: koszt tokenow codziennie, wynik nieporownywalny miedzy dniami (model
-za kazdym razem inaczej grupuje) i awaria, gdy laptop byl wylaczony albo VPN padl.
+## Jak dodać check
 
-Tu klasyfikacja przyczyny jest w SQL — te same progi zawsze, wiec trendy sa porownywalne.
-Model ma sens dopiero przy eskalacji (przekroczony prog CRITICAL), i to jest osobny krok.
+1. Napisz SQL w `sql/reports/<nazwa>.sql`. **Filtry obowiązkowe:** `OrderStatusId <> 40`
+   (anulowane), `IsDoneCalculating` (profit domknięty). Parametry na górze jako `DECLARE`.
+2. **Próg dobierz na danych, nie z sufitu** — najpierw diagnostyka na tygodniu
+   (`sql/diagnostic/`), potem próg do checku dobowego.
+3. **Nigdy `SELECT *` na dużej tabeli** — runner to blokuje (na `ofi_PriceOffer` to 14,5 GB
+   vs 0,85 GB). Wypisz kolumny.
+4. Test: `python3 -m runner.run_check --check <nazwa> --dry-run` → potem bez `--dry-run`.
+5. Automat: dorzuć trigger wskazujący na `businesschecks-daily` z override args (wzór w
+   `runner/job.yaml`).
 
-⚠️ Klasyfikacja jest celowo prosta i to widac: wiekszosc zamowien wpada w kubel
-`inne / zlozone` (36 z 42 w probce), choc wartosciowo dominuje `wysylka zjada marze`.
-Kubly lapia wiec *pieniadze*, ale nie *liczbe przypadkow* — do dopracowania na wiekszej probie.
-
-## Konwencje
-
-- Checklist uzywa `- [ ]` / `- [x]` - standardowy markdown
-- Wyniki wpisuj pod krokiem w bloku `> result:`
-- SQL-e w `sql/` maja placeholdery `[ID]`, `[EAN]`, `[DAYS]` - podmien przed uruchomieniem
-- Pliki w `runs/` nazywaj: `{checklist}-{data}.md`
+Pułapki BigQuery, filtry i zasady kosztowe: skill [`.claude/skills/businesscheck/SKILL.md`](.claude/skills/businesscheck/SKILL.md).

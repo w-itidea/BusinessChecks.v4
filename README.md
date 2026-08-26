@@ -89,14 +89,14 @@ Patrz `runs/README.md`. Trzy pierwsze: rozjazd wyceny (~44 tys. zł/mies.), test
 
 ## 🔵 Co do zrobienia
 
-- [ ] **Przełączyć checki BOL z mirrora na `itideatestproject.bol_ew3`.** Szymon przeniósł
-      dane BOL do europe-west3 (2026-07-23) — teraz joinują się natywnie i mają **historię
-      dzienną** (5 mln wierszy `BolBuyBox`), której mirror `mka_BolBuyBox` nie ma. Po
-      przełączeniu: usunąć z ETL `mka_BolBuyBox` i `azymut_BolOffersFirstOffer` (`our_offers`
-      w bol_ew3 je zastępuje). Patrz `docs/bol-ew3.md`.
-- [ ] **Wyłączyć stare crony lokalne** — `stratne_slack.sh`, `bol_buybox_slack.sh`,
-      `fosa_ab_slack.sh` chodzą **równolegle** z chmurą do porównania. Wyłączyć po 2–3 zielonych
-      przebiegach chmury. `marvel` i `fosa` (lokalne) mają self-limit 5 — wygasną same.
+- [x] ✅ **Checki BOL przełączone z mirrora na `itideatestproject.bol_ew3`** (2026-08-26).
+      `bol-buybox` i `fosa-ab` czytają `BolBuyBox_current` / `our_offers_current`; oba mirrory
+      (`mka_BolBuyBox`, `azymut_BolOffersFirstOffer`) usunięte z ETL i z BigQuery. Pokrycie
+      zweryfikowane (BuyBox 1:1; 18,5 tys. „brakujących" ofert = phantomy azymuta). Patrz
+      `docs/bol-ew3.md`.
+- [ ] **Wyłączyć stare crony lokalne** — `stratne_slack.sh` i `bol_buybox_slack.sh` chodzą
+      **równolegle** z chmurą do porównania. Wyłączyć po 2–3 zielonych przebiegach chmury.
+      `fosa_ab_slack.sh` już wygasł sam (self-limit 5).
 - [ ] **Rutyna claude.ai + konektor BigQuery** — żeby sprawdzać checki z przeglądarki i żeby
       rutyna „analiza stratnych" liczyła z BQ zamiast scrapować własne digesty ze Slacka.
       Blokada: autoryzacja konektora BigQuery na koncie. Patrz `docs/skille-i-rutyny.md`.

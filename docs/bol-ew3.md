@@ -35,22 +35,28 @@ Każda tabela ma też widoki `_current` / `_fresh` (najświeższy snapshot bez s
 
 `1834699` — tym filtrujemy „czy to nasza oferta" w `BolBuyBox.RetailerId` / `competing_offers.RetailerId`.
 
-## Konsekwencja dla checków — DO ZROBIENIA
+## Konsekwencja dla checków — ✅ ZROBIONE (2026-08-26)
 
-Check `bol-buybox` (i inne BOL) używa dziś mirrora `BIData.mka_BolBuyBox` (stan bieżący,
-bez historii) + `BIData.azymut_BolOffersFirstOffer`. Po weryfikacji, że wszystkie potrzebne
-kolumny są w `bol_ew3` (są — sprawdzone), należy:
+Checki BOL (`bol-buybox`, `fosa-ab`) **przełączone** z mirrora na `bol_ew3`:
 
-1. **Przełączyć checki BOL na `itideatestproject.bol_ew3.BolBuyBox`** — zyskujemy historię
-   dzienną (5 mln wierszy vs 112 tys. stanu bieżącego) i możliwość analizy trendu buy-boxa
-   w czasie, nie tylko „teraz".
-2. `our_offers` zastępuje `azymut_BolOffersFirstOffer` (ma `BundlePrice`, `StockAmount`).
-3. Po przełączeniu — **usunąć z ETL** `mka_BolBuyBox` i `azymut_BolOffersFirstOffer`
-   (`etl/tables.json`), bo staną się martwym mirrorem duplikującym dane.
+1. `BIData.mka_BolBuyBox` → **`itideatestproject.bol_ew3.BolBuyBox_current`** (najświeższy
+   snapshot per EAN; historia dzienna dostępna w bazowej `bol_ew3.BolBuyBox`, gdyby check miał
+   liczyć trend).
+2. `BIData.azymut_BolOffersFirstOffer` → **`bol_ew3.our_offers_current`** (`BundlePrice`,
+   `StockAmount`), agregowane `MIN(BundlePrice)` per EAN (w bol_ew3 bywa >1 oferta/EAN).
+3. Oba mirrory **usunięte z `etl/tables.json` i z BigQuery** — ETL ich już nie kopiuje.
 
 Mapowanie kolumn (mirror → bol_ew3): `Ean`→`Ean`, `RetailerId`→`RetailerId`,
 `BestOfferPrice`→`BestOfferPrice`, `FulfilmentMethod`→`FulfilmentMethod`, `HasOffer`→`HasOffer`,
 `MarketplaceId`→`MarketplaceId`, `LastCheckedUtc`→`LastCheckedUtc` — 1:1, bez zmian w logice checku.
+
+### Weryfikacja pokrycia (zanim skasowaliśmy mirror)
+- **BuyBox: 1:1** — stary mirror 111 867 EAN, `BolBuyBox_current` 111 867, różnica **0**.
+- **Nasze oferty:** stary mirror 111 867 EAN, `our_offers` 93 375 → **18 492 „brakujących"**.
+  Sprawdzone: **wszystkie 18 492 mają datę `0001-01-01`** i ani jeden realnej mutacji z BOL —
+  to phantomy azymuta („first offer", której nigdy realnie nie wystawiliśmy). `our_offers` (dane
+  z API BOL) słusznie ich nie ma → nowy eksport jest **czystszy**, nie uboższy. Stary check
+  `Forced_w_zywej_ofercie` był przez phantomy zawyżony.
 
 ## Zasada na przyszłość: europe-west3 to nasz region
 

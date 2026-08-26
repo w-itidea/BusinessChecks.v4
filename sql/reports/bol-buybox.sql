@@ -7,10 +7,11 @@
 --   2. PROPAGACJA — czy forced cena z ustawien faktycznie weszla do PriceOffer i do zywej oferty BOL
 --      (bez tego "nie odzyskalismy BB" moze znaczyc po prostu "cena nigdzie nie doszla")
 --
--- UWAGA REGION: prawdziwe, historyczne dane BOL zyja w `itideatestproject.bol` @ EU
--- (BolBuyBox: 4,6 mln wierszy z partycjonowaniem dziennym). NIE da sie ich zjoinowac
--- z profitem, bo BIData jest @ europe-west3, a BigQuery nie laczy przez regiony.
--- Dlatego czytamy mirror stanu biezacego `BIData.mka_BolBuyBox`. Historii tu nie ma.
+-- REGION (2026-08-26): dane BOL przeniesione przez Szymona do `itideatestproject.bol_ew3`
+-- @ europe-west3 — ten sam region co BIData, wiec joinuja sie natywnie. Czytamy widok
+-- `BolBuyBox_current` (najswiezszy snapshot per EAN, ~112 tys.) — odpowiednik dawnego mirrora
+-- `BIData.mka_BolBuyBox`, ktory zostal wycofany. Historia dzienna dostepna w bazowej tabeli
+-- `bol_ew3.BolBuyBox`, gdyby check mial kiedys liczyc trend.
 
 DECLARE nasz      STRING  DEFAULT '1834699';
 DECLARE grupa     STRING  DEFAULT 'MS_repriceing_BolBuyBox20260629';
@@ -21,19 +22,28 @@ WITH pilot AS (
   FROM `polish-bookstores-group.BIData.ofi_AmazonFeedProductSettings`
   WHERE BookstoreId = 'BOL-NL' AND TestGroupName = grupa AND fIsActive = 1
 ),
+-- nasza zywa oferta na BOL: w bol_ew3 moze byc kilka ofert per EAN (rozne kondycje),
+-- wiec skladamy do jednej ceny per EAN (najnizsza sprzedawalna) — odpowiednik dawnego
+-- "first offer" z BolOffersFirstOffer.
+oferta_bol AS (
+  SELECT Ean, MIN(BundlePrice) AS cena_w_ofercie_bol
+  FROM `itideatestproject.bol_ew3.our_offers_current`
+  WHERE MarketplaceId = 'BOL-NL'
+  GROUP BY Ean
+),
 zlaczone AS (
   SELECT
     p.OurEan, p.forced_price,
     bb.RetailerId, bb.FulfilmentMethod, bb.BestOfferPrice, bb.HasOffer, bb.LastCheckedUtc,
     po.Price AS po_price, po.PriceMin AS po_pricemin,
-    bofo.BundlePricesPrice AS cena_w_ofercie_bol
+    ob.cena_w_ofercie_bol
   FROM pilot p
-  LEFT JOIN `polish-bookstores-group.BIData.mka_BolBuyBox` bb
+  LEFT JOIN `itideatestproject.bol_ew3.BolBuyBox_current` bb
          ON bb.Ean = p.OurEan AND bb.MarketplaceId = 'BOL-NL'
   LEFT JOIN `polish-bookstores-group.BIData.ofi_PriceOffer` po
          ON po.SKU = p.OurEan AND po.BookstoreId = 'BOL-NL'
-  LEFT JOIN `polish-bookstores-group.BIData.azymut_BolOffersFirstOffer` bofo
-         ON bofo.Ean = p.OurEan
+  LEFT JOIN oferta_bol ob
+         ON ob.Ean = p.OurEan
 )
 SELECT
   COUNT(*)                                                          AS Pilot_EAN,

@@ -57,7 +57,7 @@ SELECT
 FROM `polish-bookstores-group.BIData.fosa_ab_cohort` c
 CROSS JOIN okna o
 LEFT JOIN sprzedaz s ON s.EAN = c.ean
-LEFT JOIN `polish-bookstores-group.BIData.mka_BolBuyBox` bb
+LEFT JOIN `itideatestproject.bol_ew3.BolBuyBox_current` bb
        ON bb.Ean = c.ean AND bb.MarketplaceId = 'BOL-NL' AND bb.HasOffer
 GROUP BY c.grp
 ORDER BY c.grp DESC

@@ -22,19 +22,18 @@ np. scrapując własne wiadomości ze Slacka.
 | `ofi_PriceOffer` | `BIData.ofi.PriceOffer` | `Id` | `LastUpdatedOnUtc` |
 | `ofi_AmazonFeedProductSettings` | `BIData.ofi.AmazonFeedProductSettings` | `Id` | `LastModifiedOnUtc` |
 | `azymut_BookstoreProductPA` | `azymut.dbo.BookstoreProductPA` | `EAN` | `LastModifiedOnUtc` |
-| ~~`mka_BolBuyBox`~~ | `BIData.mka.BolBuyBox` | `Ean, MarketplaceId` | `LastModifiedOnUtc` |
-| ~~`azymut_BolOffersFirstOffer`~~ | `azymut.dbo.BolOffersFirstOffer` | brak PK → pełny reload | `MutationDateTime` |
 
 Kolumny i klucz główny są **wykrywane z katalogu źródła** przy każdym przebiegu — dodanie kolumny
 w SQL Serverze nie wymaga zmiany kodu. Konfiguracja (`tables.json`) trzyma tylko to, czego nie da
-się wywnioskować: watermark, partycję, klastrowanie i wykluczenia. Tabele bez klucza głównego
-(`azymut_BolOffersFirstOffer`) idą przez **pełne przeładowanie** zamiast MERGE (małe, `bq load` darmowy).
+się wywnioskować: watermark, partycję, klastrowanie i wykluczenia. Tabele bez klucza głównego idą przez **pełne przeładowanie** zamiast MERGE (małe, `bq load` darmowy).
 
-> ⚠️ **`mka_BolBuyBox` i `azymut_BolOffersFirstOffer` są do wycofania (2026-07-23).** Były mirrorem
-> stanu bieżącego BOL, bo prawdziwe dane BOL leżały w lokalizacji `EU` i nie joinowały się z
-> `europe-west3`. Szymon przeniósł je do **`itideatestproject.bol_ew3`** (europe-west3, z historią
-> dzienną) — teraz joinują się natywnie. Po przełączeniu checków BOL na `bol_ew3` usunąć te dwa
-> wpisy z `tables.json`. Patrz `../docs/bol-ew3.md`.
+> ✅ **Mirrory BOL wycofane (2026-08-26).** `mka_BolBuyBox` i `azymut_BolOffersFirstOffer` były
+> mirrorem stanu bieżącego BOL, bo prawdziwe dane leżały w `EU` i nie joinowały się z `europe-west3`.
+> Szymon przeniósł je do **`itideatestproject.bol_ew3`** (europe-west3, historia dzienna). Checki BOL
+> (`bol-buybox`, `fosa-ab`) przełączone na `bol_ew3.BolBuyBox_current` / `our_offers_current`, oba
+> mirrory usunięte z `tables.json` **i z BigQuery**. Zweryfikowano pokrycie: BuyBox 1:1 (0 różnicy),
+> a 18 492 EAN-ów „brakujących" w `our_offers` to phantomy azymuta (data `0001-01-01`, nigdy realnie
+> na BOL). Patrz `../docs/bol-ew3.md`.
 
 ## Czym różni się od poprzedniej wersji
 

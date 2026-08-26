@@ -3,7 +3,7 @@
 SELECT
     op.CustomerOrderId,
     CAST(op.fOrderTotal AS DECIMAL(10,2)) AS Przychody,
-    CAST(op.Profit_ActualFull AS DECIMAL(10,2)) AS Profit,
+    CAST(op.Profit_Actual AS DECIMAL(10,2)) AS Profit,
     CAST(ISNULL(sc.fShippingCostTotal, 0) AS DECIMAL(10,2)) AS KosztyWysylki,
     CAST(ISNULL(pc.fPaymentCost, 0) AS DECIMAL(10,2)) AS KosztyPlatnosci,
     CAST(ISNULL(mc.fMarketplaceCost, 0) AS DECIMAL(10,2)) AS KosztyMarketplace,

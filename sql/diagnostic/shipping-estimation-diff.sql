@@ -9,7 +9,7 @@ SELECT TOP 20
         (sc.fShippingCostTotal - sc.ShippingCostTotal_EstimatedPreShipments)
         / NULLIF(sc.ShippingCostTotal_EstimatedPreShipments, 0) * 100
     AS DECIMAL(5,1)) AS ProcentRoznicy,
-    CAST(op.Profit_ActualFull AS DECIMAL(10,2)) AS Profit
+    CAST(op.Profit_Actual AS DECIMAL(10,2)) AS Profit
 FROM BIData.opi.ShippingCost sc (NOLOCK)
 JOIN BIData.opi.OrderProfit op (NOLOCK) ON sc.CustomerOrderId = op.CustomerOrderId
 WHERE op.OrderCreatedOnUtc >= DATEADD(DAY, -[DAYS], GETDATE())

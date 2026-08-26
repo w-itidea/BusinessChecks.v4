@@ -1,5 +1,13 @@
 # Order Profit - Checklist
 
+> ⭐ **REGUŁA (decyzja Wojtka 2026-08-26): profit liczymy z `Profit_Actual`, NIGDY z `Profit_ActualFull`.**
+> Cała różnica to `+ LineHaulCost` doliczany wyłącznie do wysyłek na GB (kod: `azymut.opi.Calculate_OrderProfitAll`).
+> `ActualFull` nie odejmuje realnego kosztu konsolidacji do UK → zawyża zysk o 4,56 zł/zam. i ukrywa 120 strat/mies.
+> Poza UK obie kolumny są identyczne. ⚠️ Nazwa myli — „Full" jest węższy, nie pełniejszy.
+> W `OrderProfit_Revision` `Profit_ActualFull` jest NULL w 100% — czytaj `Profit_Actual`, sortuj po `DeletedOnUtc`.
+
+
+
 **Data:** ____-__-__
 **Analizuje:** _______________
 **Okres:** ostatnie ___ dni

@@ -8,7 +8,7 @@ SELECT TOP 20
     CAST(mc.fMarketplaceCost / NULLIF(op.fOrderTotal, 0) * 100 AS DECIMAL(5,1)) AS ProcentMarketplace,
     CAST(mc.ReferralFee_Actual AS DECIMAL(10,2)) AS ReferralFee,
     CAST(mc.ClosingFees_Actual AS DECIMAL(10,2)) AS ClosingFee,
-    CAST(op.Profit_ActualFull AS DECIMAL(10,2)) AS Profit,
+    CAST(op.Profit_Actual AS DECIMAL(10,2)) AS Profit,
     CASE
         WHEN mc.fMarketplaceCost / NULLIF(op.fOrderTotal, 0) > 0.20 THEN 'KRYTYCZNE >20%'
         WHEN mc.fMarketplaceCost / NULLIF(op.fOrderTotal, 0) > 0.17 THEN 'PODWYZSZONE 17-20%'

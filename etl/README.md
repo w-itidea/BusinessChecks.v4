@@ -54,6 +54,26 @@ czyli został puszczony raz, ręcznie. Poprawione:
 5. **Partition pruning w MERGE** — dotyka tylko partycji obecnych w delcie, nie całej tabeli.
 6. **Jeden błąd nie zabija przebiegu** — tabele są niezależne, błąd jest raportowany i idzie dalej.
 
+## Uruchomienie ręczne w chmurze
+
+```bash
+# ⚠️ --container=etl jest OBOWIAZKOWE — job ma dwa kontenery (etl + sidecar cloudflared,
+# ktory stawia tunel do bazy). Bez tego: INVALID_ARGUMENT: Container '' not found.
+gcloud run jobs execute bidata-bq-sync \
+  --region=europe-north1 --project=erp-production-438714 \
+  --container=etl --args="-m,etl.sync,--table=ofi_PriceOffer"
+```
+
+Ta sama zasada dotyczy `containerOverrides` w body triggera Cloud Scheduler — pole `name`
+musi wskazywać kontener `etl`, a `args` **zastępują całe** args z `job.yaml`, więc muszą
+zawierać także `-m` i `etl.sync`. Pominięcie ich daje `python3 --table=...` (ENTRYPOINT obrazu
+to `python3`) i job pada natychmiast. Tak było zepsute `bidata-bq-sync-priceoffer` — przez co
+`ofi_PriceOffer` stał w mirrorze od 2026-07-21, mimo że trigger był `ENABLED`.
+
+Sprawdzanie, czy przebieg się skończył: **`status.completionTime`** (puste = trwa) albo
+`succeededCount`/`failedCount`. **Nie** `conditions[0].type` — to nazwa warunku, nie wynik;
+dla biegnącego joba pokazuje „Completed" ze `status: Unknown`.
+
 ## Uruchomienie lokalne
 
 ```bash

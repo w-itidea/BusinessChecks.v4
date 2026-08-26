@@ -33,11 +33,14 @@ SLACK_PROJECT = "erp-production-438714"
 
 
 def znajdz_sql(nazwa: str) -> Path:
-    for kat in ("sql/reports", "sql/diagnostic"):
+    # sql/etl = checki INFRASTRUKTURY (zdrowie mirrora), nie biznesu. Trzymane osobno,
+    # bo odpowiadaja na inne pytanie ("czy dane sa prawdziwe") niz sql/reports ("co z biznesu
+    # wynika") i maja innego adresata — awaria ETL-a to zgloszenie techniczne, nie raport.
+    for kat in ("sql/reports", "sql/diagnostic", "sql/etl"):
         p = ROOT / kat / f"{nazwa}.sql"
         if p.exists():
             return p
-    raise SystemExit(f"nie znalazlem checku '{nazwa}' w sql/reports ani sql/diagnostic")
+    raise SystemExit(f"nie znalazlem checku '{nazwa}' w sql/reports, sql/diagnostic ani sql/etl")
 
 
 def sprawdz_gwiazdke(sql: str) -> None:

@@ -161,9 +161,42 @@ def serialize(v):
     return str(v)
 
 
+# ─────────────────────────── Maskowanie PII ───────────────────────────
+# Maskujemy PO STRONIE ZRODLA (w SELECT), a nie po pobraniu. Dzieki temu dane osobowe
+# nie trafiaja nawet do pliku NDJSON na dysku ani do pamieci procesu — z bazy wychodzi
+# juz wartosc zamaskowana. Tryby deklaruje sie w tables.json w kluczu "mask".
+MASK_MODES = {
+    # nazwisko/imie/firma -> stala. NULL zostaje NULL, zeby nie udawac danych tam gdzie ich nie ma.
+    "xxx": lambda c: f"CASE WHEN [{c}] IS NULL THEN NULL ELSE 'xxx' END AS [{c}]",
+    # e-mail -> zostaje sama domena (do analiz typu udzial gmail/marketplace), lokalna czesc znika.
+    "email_domain": lambda c: (
+        f"CASE WHEN [{c}] IS NULL THEN NULL "
+        f"WHEN CHARINDEX('@', [{c}]) > 0 THEN 'xxx@' + SUBSTRING([{c}], CHARINDEX('@', [{c}]) + 1, 255) "
+        f"ELSE 'xxx' END AS [{c}]"
+    ),
+}
+
+
+def select_expr(nazwa: str, mask: dict) -> str:
+    """Zwraca wyrazenie do SELECT-a: zwykla kolumne albo jej zamaskowana wersje."""
+    tryb = mask.get(nazwa)
+    if tryb is None:
+        return f"[{nazwa}]"
+    if tryb not in MASK_MODES:
+        raise RuntimeError(f"Nieznany tryb maskowania '{tryb}' dla kolumny {nazwa}. Dozwolone: {sorted(MASK_MODES)}")
+    return MASK_MODES[tryb](nazwa)
+
+
 def pull(conn, cfg: dict, kolumny: list[dict], watermark: str | None, out_dir: Path) -> tuple[int, list[Path]]:
     """Pobiera delte do porcji po CHUNK_ROWS wierszy. Zwraca (liczba wierszy, lista plikow)."""
-    cols = ", ".join(f"[{k['nazwa']}]" for k in kolumny)
+    mask = cfg.get("mask") or {}
+    nieznane = set(mask) - {k["nazwa"] for k in kolumny}
+    if nieznane:
+        # lepiej wywalic sie glosno niz cicho zsynchronizowac PII bo ktos zrobil literowke
+        raise RuntimeError(f"tables.json: maska wskazuje kolumny spoza tabeli {cfg['table']}: {sorted(nieznane)}")
+    if mask:
+        log(f"    maskuje {len(mask)} kolumn PII w zrodlowym SELECT: {', '.join(sorted(mask))}")
+    cols = ", ".join(select_expr(k["nazwa"], mask) for k in kolumny)
     where = ""
     params = ()
     if watermark:

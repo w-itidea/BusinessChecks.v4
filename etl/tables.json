@@ -4,67 +4,176 @@
   "dataset": "BIData",
   "location": "europe-west3",
   "staging_suffix": "_staging",
-
   "tables": [
     {
       "target": "opi_OrderProfit",
-      "db": "BIData", "schema": "opi", "table": "OrderProfit",
+      "db": "BIData",
+      "schema": "opi",
+      "table": "OrderProfit",
       "watermark": "LastUpdatedOnUtc",
       "partition_by": "OrderCreatedOnUtc",
-      "cluster_by": ["IdBookstore", "CustomerOrderId"],
+      "cluster_by": [
+        "IdBookstore",
+        "CustomerOrderId"
+      ],
       "exclude": []
     },
     {
       "target": "opi_OrderItemProfit",
-      "db": "BIData", "schema": "opi", "table": "OrderItemProfit",
+      "db": "BIData",
+      "schema": "opi",
+      "table": "OrderItemProfit",
       "watermark": "LastUpdateOnUtc",
       "partition_by": null,
-      "cluster_by": ["CustomerOrderId", "EAN"],
+      "cluster_by": [
+        "CustomerOrderId",
+        "EAN"
+      ],
       "exclude": []
     },
     {
       "target": "opi_ShippingCost",
-      "db": "BIData", "schema": "opi", "table": "ShippingCost",
+      "db": "BIData",
+      "schema": "opi",
+      "table": "ShippingCost",
       "watermark": "LastUpdatedOnUtc",
       "partition_by": null,
-      "cluster_by": ["CustomerOrderId"],
+      "cluster_by": [
+        "CustomerOrderId"
+      ],
       "exclude": []
     },
     {
       "target": "opi_OrderProfitTag",
-      "db": "BIData", "schema": "opi", "table": "OrderProfitTag",
+      "db": "BIData",
+      "schema": "opi",
+      "table": "OrderProfitTag",
       "watermark": "CreatedOnUtc",
       "partition_by": "CreatedOnUtc",
-      "cluster_by": ["CustomerOrderId", "TagId"],
+      "cluster_by": [
+        "CustomerOrderId",
+        "TagId"
+      ],
       "_po_co": "Tabela PRZYCZYN: system sam taguje co poszlo nie tak (1=rozjazd kosztu wysylki, 34=opozniony dispatch, 35=WarehouseRequest do dostawcy, 38=wymuszony upgrade wysylki). Bez niej check mowi CO sie stalo, ale nie DLACZEGO.",
       "exclude": []
     },
     {
       "target": "ofi_PriceOffer",
-      "db": "BIData", "schema": "ofi", "table": "PriceOffer",
+      "db": "BIData",
+      "schema": "ofi",
+      "table": "PriceOffer",
       "watermark": "LastUpdatedOnUtc",
       "partition_by": null,
-      "cluster_by": ["BookstoreId", "OurEan"],
+      "cluster_by": [
+        "BookstoreId",
+        "OurEan"
+      ],
       "_exclude_why": "Json = varchar(max) z pelnym feedem (ogromny, nieuzywany w analizie); PriceAvailabilityHash = varbinary (BQ nie potrzebuje)",
-      "exclude": ["Json", "PriceAvailabilityHash"]
+      "exclude": [
+        "Json",
+        "PriceAvailabilityHash"
+      ]
     },
     {
       "target": "ofi_AmazonFeedProductSettings",
-      "db": "BIData", "schema": "ofi", "table": "AmazonFeedProductSettings",
+      "db": "BIData",
+      "schema": "ofi",
+      "table": "AmazonFeedProductSettings",
       "watermark": "LastModifiedOnUtc",
       "partition_by": null,
-      "cluster_by": ["OurEan", "BookstoreId"],
+      "cluster_by": [
+        "OurEan",
+        "BookstoreId"
+      ],
       "_po_co": "ŻYWA tabela ustawień oferty (ForcedPrice/ExtraMargin/TestGroupName). azymut.amz.AmazonFeedProductSettings jest MARTWA — nie używać.",
       "exclude": []
     },
     {
       "target": "azymut_BookstoreProductPA",
-      "db": "azymut", "schema": "dbo", "table": "BookstoreProductPA",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "BookstoreProductPA",
       "watermark": "LastModifiedOnUtc",
       "partition_by": null,
-      "cluster_by": ["EAN"],
+      "cluster_by": [
+        "EAN"
+      ],
       "_uwaga": "PK = EAN. fRowHash (varbinary) jest pomijany automatycznie - BQ go nie potrzebuje.",
       "exclude": []
+    },
+    {
+      "target": "azymut_SupplierPA",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "SupplierPA",
+      "watermark": "LastUpdated",
+      "partition_by": null,
+      "cluster_by": [
+        "EAN",
+        "SupplierId"
+      ],
+      "_po_co": "Dostepnosc i cena hurtowa per dostawca x EAN. Bez niej nie da sie policzyc, ile z oferty dostawcy realnie wystawiamy, ani rozroznic kubelkow stanu (Platon podaje 0/1/3/6/21/51).",
+      "_uwaga_watermark": "MUSI byc LastUpdated. UpdatedOnUtc jest zabetonowane na placeholderze 1977-06-14 dla 100% wierszy Platona (224) i Ateneum (253) - jako watermark nie zaciagneloby nigdy nic. Bug zgloszony Blazejowi 2026-06-23.",
+      "exclude": []
+    },
+    {
+      "target": "azymut_CustomerOrder",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "CustomerOrder",
+      "watermark": "LastUpdateDateUtc",
+      "partition_by": "CreatedOnUtc",
+      "cluster_by": [
+        "IdBookstore",
+        "Id"
+      ],
+      "_po_co": "Naglowek zamowienia: daty realizacji (ShippedDateUtc, PaidDateUtc, DispatchDate), status, rynek. opi_OrderProfit ma pieniadze, ale nie ma czasu do wysylki ani statusu wysylkowego.",
+      "_uwaga_rodo": "Mirror jest ZANONIMIZOWANY. Twarde PII (karty, IP, telefony, ulica, pola tekstowe swobodne, NIP) jest WYKLUCZONE i nie opuszcza SQL Servera. Imie/nazwisko/firma -> 'xxx', e-mail -> 'xxx@domena' (domena zostaje do analiz udzialu dostawcow poczty). Maskowanie dzieje sie w zrodlowym SELECT, nie po pobraniu. NIE dodawac tu kolumn adresowych bez decyzji.",
+      "_zostawione_swiadomie": "City / StateProvince / ZipPostalCode / Country zostaja - potrzebne do analiz kierunkow wysylki. Bez nazwiska i ulicy nie wskazuja osoby, ale to quasi-identyfikatory: nie laczyc ich z zewnetrznymi zbiorami.",
+      "mask": {
+        "BillingFirstName": "xxx",
+        "BillingLastName": "xxx",
+        "BillingCompany": "xxx",
+        "ShippingFirstName": "xxx",
+        "ShippingLastName": "xxx",
+        "ShippingCompany": "xxx",
+        "BillingEmail": "email_domain",
+        "ShippingEmail": "email_domain"
+      },
+      "exclude": [
+        "CardType",
+        "CardName",
+        "CardNumber",
+        "MaskedCreditCardNumber",
+        "CardCvv2",
+        "CardExpirationMonth",
+        "CardExpirationYear",
+        "AllowStoringCreditCardNumber",
+        "CustomerIp",
+        "VatNumber",
+        "BillingPhoneNumber",
+        "BillingFaxNumber",
+        "ShippingPhoneNumber",
+        "ShippingPhoneNumber_BeforeFix",
+        "ShippingFaxNumber",
+        "BillingAddress1",
+        "BillingAddress2",
+        "ShippingAddress1",
+        "ShippingAddress2",
+        "CheckoutAttributeDescription",
+        "CheckoutAttributesXml",
+        "AuthorizationTransactionId",
+        "AuthorizationTransactionCode",
+        "AuthorizationTransactionResult",
+        "CaptureTransactionId",
+        "CaptureTransactionResult",
+        "SubscriptionTransactionId",
+        "Note",
+        "ShippingNote",
+        "FullText",
+        "ShippingMethod"
+      ],
+      "_uwaga_shippingmethod": "ShippingMethod (nvarchar(max)) wywala polaczenie pymssql/FreeTDS bledem 20047 'DBPROCESS is dead' przy pelnym pobraniu - TOP 5 przechodzi, pelny skan nie. Zawartosc jest niewinna (max 66 znakow, brak znakow spoza CP1250), a pozostale 33 kolumny tekstowe skanuja sie bez problemu, wiec to specyfika sterownika, nie danych. Wykluczone jako obejscie - nie jest nam potrzebna (metoda wysylki jest w Shipment/ShipmentMethod). Do zbadania osobno, jesli kiedys bedzie potrzebna."
     }
   ]
 }

@@ -47,7 +47,28 @@ SQL Server (za VPN)                    BigQuery @ europe-west3
 | `ofi_PriceOffer` | 14,77 mln | `BIData.ofi.PriceOffer` | **raz dziennie** (5:40) — koszt |
 | `ofi_AmazonFeedProductSettings` | 96 tys. | żywa tabela ustawień oferty | co 8 h |
 | `azymut_BookstoreProductPA` | 1,31 mln | `azymut.dbo.BookstoreProductPA` | co 8 h |
+| `azymut_SupplierPA` | 5,35 mln | `azymut.dbo.SupplierPA` — dostępność/cena per dostawca × EAN | co 8 h |
+| `azymut_CustomerOrder` | 3,19 mln | `azymut.dbo.CustomerOrder` — **zanonimizowany** (patrz niżej) | co 8 h |
+| `platon_wydobco_cohort` | 7,7 tys. | statyczna kohorta listy Platona | — |
 | `fosa_ab_cohort` | 20 tys. | statyczna kohorta testu A/B | — |
+
+#### Anonimizacja `azymut_CustomerOrder`
+
+Mirror zamówień nie zawiera danych osobowych. `etl/sync.py` maskuje je **w SELECT wysyłanym do
+SQL Servera**, a nie po pobraniu — dzięki temu PII nie trafia ani do pliku NDJSON na dysku, ani
+do pamięci procesu. Tryby deklaruje się w `tables.json` w kluczu `mask`:
+
+| Tryb | Działanie | Kolumny |
+|---|---|---|
+| `xxx` | wartość → `'xxx'`, `NULL` zostaje `NULL` | imię, nazwisko, firma (billing + shipping) |
+| `email_domain` | `jan.kowalski@gmail.com` → `xxx@gmail.com` | `BillingEmail`, `ShippingEmail` |
+
+Domena zostaje celowo — pozwala analizować udział marketplace'ów (`verkopen.bol.com`) bez
+identyfikowania osoby. Twarde PII (karty, IP, telefony, ulice, NIP, pola tekstowe swobodne) jest
+**wykluczone**, nie maskowane. Miasto/kod/kraj zostawione świadomie — potrzebne do analiz
+kierunków wysyłki; bez nazwiska i ulicy nie wskazują osoby, ale to quasi-identyfikatory, więc nie
+łączyć ich z zewnętrznymi zbiorami. Maska wskazująca nieistniejącą kolumnę **przerywa przebieg** —
+lepiej głośny błąd niż ciche zsynchronizowanie PII po literówce.
 
 ### Automat w chmurze (`erp-production-438714`)
 
@@ -60,6 +81,7 @@ Konto serwisowe: `businesschecks@erp-production-438714.iam.gserviceaccount.com`.
 | `businesschecks-daily-trigger` | 8:03 codziennie | raport stratnych (3 checki) → DM Wojtka |
 | `businesschecks-bol-trigger` | pon+czw 8:07 | pilot BOL buy-box |
 | `businesschecks-fosa-trigger` | pon 8:21 | test A/B fosa |
+| `businesschecks-platon-trigger` | pon 8:27 | monitor listy Platon / wyd. obcojęzyczne (do 2026-11-04) |
 
 > ⚠️ Cloud Scheduler **nie obsługuje `europe-north1`** — joby stoją w europe-north1,
 > triggery muszą być w `europe-central2`.
@@ -76,6 +98,8 @@ Konto serwisowe: `businesschecks@erp-production-438714.iam.gserviceaccount.com`.
 | `bol-buybox` | pilot BOL buy-box + propagacja forced ceny | 0,07 GB | zastępuje `bol_buybox_slack.sh` |
 | `fosa-ab` | test A/B fosa (+4% ExtraMargin), diff-in-diff per dobę | 0,15 GB | zastępuje `fosa_ab_slack.sh` |
 | `buybox-sale-profitability` | Buy Box + zyskowność kohorty sale EU | 0,78 GB | — |
+| `platon-wydobco-ekspozycja` | ile z oferty Platona realnie wystawiamy, wg przedziałów stanu | 0,18 GB | wartownik formatu feedu |
+| `platon-wydobco-sprzedaz` | sprzedaż i realizacja listy vs **reszta katalogu** | 0,20 GB | kontrola sezonowa w wyniku |
 
 Koszt całości: ~18 zł/mies. (storage grosze + skany; `bq load` darmowy).
 

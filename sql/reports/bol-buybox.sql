@@ -1,4 +1,5 @@
 -- CHECK: pilot BOL buy-box — czy odzyskujemy Buy Box i czy forced cena dociera do oferty.
+-- @opis Czy pilot repricingu na BOL odzyskuje buy-box i czy wymuszona cena faktycznie dociera do oferty.
 -- Zastepuje pierwsza czesc ~/.claude/cron/bol_buybox_slack.sh (bol_quickwin_KONTROLA.sql).
 --
 -- Baza wyjsciowa pilota (2026-06-29): wszystkie EAN-y mialy konkurenta na FBR, my drozsi, bez BB.

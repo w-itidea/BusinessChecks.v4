@@ -1,4 +1,5 @@
 -- CHECK: test A/B „fosa" — +4% ExtraMargin (grupa 1) vs kontrola (grupa 0), BOL-NL.
+-- @opis Czy podniesienie marży o 4% na „fosie" BOL (książki bez konkurencji) nie kosztuje nas sprzedaży.
 -- Zastepuje ~/.claude/cron/fosa_ab_slack.sh.
 --
 -- ⚠️ POPRAWIONE WYSWIETLANIE. Stary raport sumowal surowe wartosci z okien o ROZNEJ dlugosci

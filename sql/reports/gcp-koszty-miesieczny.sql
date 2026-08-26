@@ -1,4 +1,5 @@
 -- location: EU
+-- @opis Ile wydaliśmy w GCP w minionym miesiącu (konto Karta TW, region EU) i co najbardziej urosło.
 -- CHECK: miesieczny monitoring kosztow GCP — konto Karta TW (billing export @ EU).
 --
 -- Zrodlo: polish-bookstores-group.oferta_produkcyjny_billing (resource-level).

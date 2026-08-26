@@ -1,4 +1,5 @@
 -- CHECK: wzorce strat z ostatniej doby — agregat per przyczyna i rynek.
+-- @opis Czy straty z ostatniej doby układają się we wzorzec — agregat per przyczyna i rynek.
 --
 -- To jest sekcja "Wzorce" ze starego digestu, policzona zamiast opisana przez model.
 -- Odpowiada na pytanie "gdzie systematycznie krwawimy", a nie "co bylo najgorsze wczoraj"

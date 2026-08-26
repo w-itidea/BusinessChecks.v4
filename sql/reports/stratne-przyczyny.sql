@@ -1,4 +1,5 @@
 -- CHECK: PRZYCZYNY strat — nie "co sie stalo", tylko "dlaczego".
+-- @opis Co konkretnie zjadło marżę na stratnych zamówieniach — rozbicie na czynniki, nie na objawy.
 --
 -- Kubel z stratne-daily mowi RODZAJ ("wysylka zjada marze"). Ten check mowi POWOD,
 -- bo laczy strate z tagami, ktore systemy same zapisuja w opi_OrderProfitTag:

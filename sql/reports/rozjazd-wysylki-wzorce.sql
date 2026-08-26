@@ -1,4 +1,5 @@
 -- CHECK: GDZIE estymacja kosztu wysylki myli sie systematycznie.
+-- @opis Przy jakich metodach i wagach systematycznie mylimy się w estymacji kosztu wysyłki.
 --
 -- Sortowane wg lacznego rozjazdu (najwiecej pieniedzy na gorze), bo pytanie brzmi
 -- "co naprawic najpierw", a nie "gdzie procent jest najwyzszy" — wysoki procent na

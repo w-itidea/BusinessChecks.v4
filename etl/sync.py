@@ -285,11 +285,25 @@ def create_table(cfg: dict, conf: dict, kolumny: list[dict]) -> None:
     cols_ddl = ",\n  ".join(f"`{k['nazwa']}` {k['bq']}" for k in kolumny)
     extra = ""
     if cfg.get("partition_by"):
-        extra += f"\nPARTITION BY DATE(`{cfg['partition_by']}`)"
+        # Granularnosc partycji. Domyslnie DAY, ale BigQuery przyjmuje najwyzej 4000 partycji
+        # na jedno zadanie load — tabela z dluga historia (CustomerOrder: od 2010, 5819 dni)
+        # przekracza ten limit i load pada w polowie. Dla takich tabel MONTH (191 partycji).
+        gran = (cfg.get("partition_granularity") or "DAY").upper()
+        if gran not in {"DAY", "MONTH", "YEAR"}:
+            raise RuntimeError(f"partition_granularity musi byc DAY/MONTH/YEAR, jest: {gran}")
+        if gran == "DAY":
+            extra += f"\nPARTITION BY DATE(`{cfg['partition_by']}`)"
+        else:
+            # BigQuery przyjmuje tylko TRUNC pasujacy do typu kolumny — DATE_TRUNC(DATE(ts), MONTH)
+            # jest odrzucane ("PARTITION BY expression must be ...").
+            typ = next((k["bq"] for k in kolumny if k["nazwa"] == cfg["partition_by"]), "TIMESTAMP")
+            trunc = {"TIMESTAMP": "TIMESTAMP_TRUNC", "DATETIME": "DATETIME_TRUNC", "DATE": "DATE_TRUNC"}[typ]
+            extra += f"\nPARTITION BY {trunc}(`{cfg['partition_by']}`, {gran})"
     if cfg.get("cluster_by"):
         extra += "\nCLUSTER BY " + ", ".join(f"`{c}`" for c in cfg["cluster_by"])
     ddl = f"CREATE TABLE IF NOT EXISTS `{project}.{dataset}.{cfg['target']}` (\n  {cols_ddl}\n){extra}"
-    log(f"  tworze tabele {cfg['target']} (partycja: {cfg.get('partition_by') or 'brak'}, "
+    log(f"  tworze tabele {cfg['target']} (partycja: {cfg.get('partition_by') or 'brak'}"
+        f"{'/' + (cfg.get('partition_granularity') or 'DAY') if cfg.get('partition_by') else ''}, "
         f"klaster: {', '.join(cfg.get('cluster_by') or []) or 'brak'})")
     bq([f"--project_id={project}", f"--location={location}", "query", "--use_legacy_sql=false", ddl])
 

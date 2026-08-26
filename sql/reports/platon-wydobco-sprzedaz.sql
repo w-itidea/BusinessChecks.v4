@@ -1,4 +1,5 @@
 -- CHECK: sprzedaz i jakosc realizacji listy "wyd. obcojezyczne" Platona vs RESZTA KATALOGU.
+-- @opis Czy lista wydawnictw obcojęzycznych Platona sprzedaje się lepiej niż reszta katalogu.
 --
 -- Kontekst: 2026-08-14 Supplier.QtyCorrection dla Platona (224) zmieniony z -3 na -1
 -- (szczegoly w platon-wydobco-ekspozycja.sql). Ten check mierzy, czy to sie oplaca

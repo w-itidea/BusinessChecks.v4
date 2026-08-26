@@ -1,4 +1,5 @@
 -- location: US
+-- @opis Ile wydaliśmy w GCP w minionym miesiącu (konto FKWT Workspace, region US) i co najbardziej urosło.
 -- CHECK: miesieczny monitoring kosztow GCP — konto FKWT Workspace (billing export @ US).
 --
 -- Zrodlo: erp-production-438714.erp_production_billing (resource-level).

@@ -1,4 +1,5 @@
 -- CHECK: zamowienia stratne z ostatniej doby (zastepuje ~/.claude/cron/stratne_slack.sh)
+-- @opis Które zamówienia z ostatniej doby przyniosły stratę i dlaczego — z linkami do panelu.
 --
 -- Zrodlo: BIData.opi_OrderProfit (mirror w BQ) — bez VPN, bez sqlcmd, bez modelu jezykowego.
 -- Klasyfikacja przyczyny jest policzona, nie zgadnieta przez AI: te same progi za kazdym razem,

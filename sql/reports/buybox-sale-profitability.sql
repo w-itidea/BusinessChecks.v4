@@ -1,4 +1,5 @@
 -- CHECK: sale test EU — Buy Box + ZYSKOWNOSC
+-- @opis Czy przecena 2 424 SKU z 17.07 realnie przełożyła się na buy-box, sztuki i zysk.
 --
 -- Pytanie: z 2424 SKU wypchnietych na sale (2026-07-17) ile wygrywa Buy Box,
 --          ORAZ ile zamowien / sztuk / zysku te wygrane BB faktycznie wygenerowaly.

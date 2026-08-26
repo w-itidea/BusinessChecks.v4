@@ -1,4 +1,5 @@
 -- CHECK: ekspozycja listy "wydawnictwa obcojezyczne" Platona (kohorta 7 734 EAN, kontakt: K. Grzybowska).
+-- @opis Jaką część listy wydawnictw obcojęzycznych Platona faktycznie wystawiamy na sprzedaż.
 --
 -- Kontekst 1 — korekta stanu. Supplier.QtyCorrection to plaski bufor bezpieczenstwa odejmowany
 -- od stanu dostawcy. Dla Platona (224) wynosil -3; 2026-08-14 zmieniony na -1.

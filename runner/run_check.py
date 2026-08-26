@@ -70,6 +70,18 @@ def czytaj_location(sql: str) -> str:
     return LOCATION
 
 
+def czytaj_opis(sql: str) -> str:
+    """Jednozdaniowy opis checku do naglowka na Slacku. Naglowek w pliku checku:
+    `-- @opis Co ten check odpowiada, jednym zdaniem.`
+    Bez niego wiadomosc pokazuje sama nazwe pliku, po ktorej nie widac, na jakie
+    pytanie check odpowiada — a raport czyta sie rano, na telefonie."""
+    for l in sql.splitlines():
+        s = l.strip()
+        if s.lower().startswith("-- @opis"):
+            return s.split(None, 2)[2].strip() if len(s.split(None, 2)) >= 3 else ""
+    return ""
+
+
 def czytaj_link_dyrektywe(sql: str):
     """Opcjonalna stopka klikalnych linkow. Naglowek w checku:
     `-- @link <Kolumna> <url-z-{}>`  np.
@@ -189,7 +201,9 @@ def main() -> int:
             wiersze = wykonaj(sql, loc)
             tabela = jako_tabela(wiersze)
             print(f"── {nazwa} ──\n{tabela}\n")
-            blok = f"*{nazwa}*\n```\n{tabela}\n```"
+            opis = czytaj_opis(sql)
+            naglowek_checku = f"*{nazwa}*" + (f"\n_{opis}_" if opis else "")
+            blok = f"{naglowek_checku}\n```\n{tabela}\n```"
             dyr = czytaj_link_dyrektywe(sql)          # opcjonalna stopka klikalnych linkow
             if dyr:
                 stopka_l = stopka_linkow(wiersze, dyr[0], dyr[1])

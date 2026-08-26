@@ -123,6 +123,8 @@
       "table": "CustomerOrder",
       "watermark": "LastUpdateDateUtc",
       "partition_by": "CreatedOnUtc",
+      "partition_granularity": "MONTH",
+      "_uwaga_partycja": "MONTH, nie DAY. Historia siega 2010-09 = 5819 dni, a BigQuery przyjmuje max 4000 partycji na jedno zadanie load — przy dziennej partycji load pada w polowie ('Too many partitions produced by query'). Miesiecznie to 191 partycji.",
       "cluster_by": [
         "IdBookstore",
         "Id"

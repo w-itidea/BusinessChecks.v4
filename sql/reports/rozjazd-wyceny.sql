@@ -1,4 +1,5 @@
 -- CHECK: rozjazd wyceny na WSZYSTKICH zamowieniach, nie tylko stratnych.
+-- @opis Gdzie i o ile cena z momentu oferty rozjeżdża się z ceną w momencie zamówienia.
 --
 -- Pytanie: czy pieniadze sa w stratach (ogon rozkladu), czy w utraconej marzy (caly rozklad)?
 -- Straty widac, bo maja znak minus. Rozjazd wyceny na zamowieniu zyskownym nie rzuca sie

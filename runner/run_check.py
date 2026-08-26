@@ -70,6 +70,36 @@ def czytaj_location(sql: str) -> str:
     return LOCATION
 
 
+def czytaj_link_dyrektywe(sql: str):
+    """Opcjonalna stopka klikalnych linkow. Naglowek w checku:
+    `-- @link <Kolumna> <url-z-{}>`  np.
+    `-- @link Zamowienie https://panel.fkwt.pl/Order3.aspx?OrderId={}`
+    Runner zbuduje POD tabela (poza code-blockiem, zeby linki byly klikalne)
+    liste `<url|wartosc>` z tej kolumny. Generyczne — dowolny check moze uzyc.
+    W code-blocku linki Slacka sie nie klikaja, dlatego stopka jest osobno."""
+    for l in sql.splitlines():
+        s = l.strip()
+        if s.lower().startswith("-- @link"):
+            czesci = s.split(None, 3)          # ['--', '@link', 'Kolumna', 'url']
+            if len(czesci) >= 4:
+                return czesci[2], czesci[3]
+    return None
+
+
+def stopka_linkow(wiersze: list[dict], kolumna: str, szablon: str, limit: int = 15) -> str:
+    """Linijka klikalnych linkow Slacka z wartosci `kolumna` (dedup, do `limit`)."""
+    widziane, linki = set(), []
+    for w in wiersze:
+        v = w.get(kolumna)
+        if v is None or str(v) in widziane:
+            continue
+        widziane.add(str(v))
+        linki.append(f"<{szablon.replace('{}', str(v))}|{v}>")
+        if len(linki) >= limit:
+            break
+    return "🔗 " + " · ".join(linki) if linki else ""
+
+
 def koszt_skanu(sql: str, location: str = LOCATION) -> float:
     """--dry_run: ile GB przeskanuje. Kosztuje 0. Zawsze wolane PRZED wykonaniem."""
     # SQL idzie przez stdin, NIE jako argument: pliki checkow zaczynaja sie od komentarza "--",
@@ -156,9 +186,17 @@ def main() -> int:
                 raise SystemExit(f"BEZPIECZNIK: {gb:.1f} GB > limit {MAX_SCAN_GB} GB — przerwane")
             if a.dry_run:
                 continue
-            tabela = jako_tabela(wykonaj(sql, loc))
+            wiersze = wykonaj(sql, loc)
+            tabela = jako_tabela(wiersze)
             print(f"── {nazwa} ──\n{tabela}\n")
-            czesci.append(f"*{nazwa}*\n```\n{tabela}\n```")
+            blok = f"*{nazwa}*\n```\n{tabela}\n```"
+            dyr = czytaj_link_dyrektywe(sql)          # opcjonalna stopka klikalnych linkow
+            if dyr:
+                stopka_l = stopka_linkow(wiersze, dyr[0], dyr[1])
+                if stopka_l:
+                    blok += f"\n{stopka_l}"
+                    print(stopka_l)
+            czesci.append(blok)
         except SystemExit:
             raise
         except Exception as e:                  # jeden check nie moze zabic calego raportu

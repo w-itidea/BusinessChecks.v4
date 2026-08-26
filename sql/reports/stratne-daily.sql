@@ -5,6 +5,10 @@
 -- wiec wyniki z roznych dni sa porownywalne.
 --
 -- Filtry obowiazkowe: OrderStatusId <> 40 (anulowane), IsDoneCalculating = 1 (profit domkniety).
+--
+-- @link Zamowienie https://panel.fkwt.pl/Order3.aspx?OrderId={}
+-- ^ runner dokleja pod tabela klikalne linki do zamowien w panelu (poza code-blockiem,
+--   bo w code-blocku linki Slacka sie nie klikaja). Kolumna Zamowienie = CustomerOrderId.
 
 DECLARE dni_wstecz     INT64   DEFAULT 1;
 DECLARE prog_straty    NUMERIC DEFAULT 0;    -- Profit_Actual ponizej tej wartosci = strata
@@ -20,7 +24,20 @@ SELECT * FROM (
 SELECT
   CustomerOrderId                                        AS Zamowienie,
   IdBookstore                                            AS Rynek,
-  ShippingCountryIso2                                    AS Kraj,
+  CASE ShippingCountryIso2
+    WHEN 'DE' THEN 'Niemcy'     WHEN 'FR' THEN 'Francja'    WHEN 'IT' THEN 'Wlochy'
+    WHEN 'ES' THEN 'Hiszpania'  WHEN 'NL' THEN 'Holandia'   WHEN 'BE' THEN 'Belgia'
+    WHEN 'PL' THEN 'Polska'     WHEN 'SE' THEN 'Szwecja'    WHEN 'AT' THEN 'Austria'
+    WHEN 'IE' THEN 'Irlandia'   WHEN 'GB' THEN 'W.Brytania' WHEN 'UK' THEN 'W.Brytania'
+    WHEN 'DK' THEN 'Dania'      WHEN 'FI' THEN 'Finlandia'  WHEN 'PT' THEN 'Portugalia'
+    WHEN 'LU' THEN 'Luksemburg' WHEN 'CZ' THEN 'Czechy'     WHEN 'MT' THEN 'Malta'
+    WHEN 'CY' THEN 'Cypr'       WHEN 'GR' THEN 'Grecja'     WHEN 'HU' THEN 'Wegry'
+    WHEN 'RO' THEN 'Rumunia'    WHEN 'SK' THEN 'Slowacja'   WHEN 'SI' THEN 'Slowenia'
+    WHEN 'HR' THEN 'Chorwacja'  WHEN 'BG' THEN 'Bulgaria'   WHEN 'EE' THEN 'Estonia'
+    WHEN 'LT' THEN 'Litwa'      WHEN 'LV' THEN 'Lotwa'      WHEN 'NO' THEN 'Norwegia'
+    WHEN 'CH' THEN 'Szwajcaria'
+    ELSE COALESCE(ShippingCountryIso2, '??')
+  END                                                    AS Kraj,
   FORMAT_TIMESTAMP('%m-%d %H:%M', OrderCreatedOnUtc)     AS Utworzono,
   NumOfItems                                             AS Szt,
   ROUND(fOrderTotal, 2)                                  AS Wartosc,

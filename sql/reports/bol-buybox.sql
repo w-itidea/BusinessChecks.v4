@@ -1,5 +1,5 @@
 -- CHECK: pilot BOL buy-box — czy odzyskujemy Buy Box i czy forced cena dociera do oferty.
--- @opis Czy pilot repricingu na BOL odzyskuje buy-box i czy wymuszona cena faktycznie dociera do oferty.
+-- @opis Czy pilot repricingu na BOL trzyma buy-box, czy cena dociera do oferty i czy z tego realnie coś się sprzedaje.
 -- Zastepuje pierwsza czesc ~/.claude/cron/bol_buybox_slack.sh (bol_quickwin_KONTROLA.sql).
 --
 -- Baza wyjsciowa pilota (2026-06-29): wszystkie EAN-y mialy konkurenta na FBR, my drozsi, bez BB.
@@ -32,12 +32,27 @@ oferta_bol AS (
   WHERE MarketplaceId = 'BOL-NL'
   GROUP BY Ean
 ),
+-- SPRZEDAZ pilota (dodane 2026-08-26): sam buy-box nie jest celem, tylko droga.
+-- Bez tego check odpowiadal "mamy BB", ale nie "czy z tego cokolwiek wynika".
+sprzedaz AS (
+  SELECT oip.EAN,
+         SUM(oip.Quantity)   AS szt_30d,
+         SUM(oip.ItemProfit) AS zysk_30d
+  FROM `polish-bookstores-group.BIData.opi_OrderItemProfit` oip
+  JOIN `polish-bookstores-group.BIData.opi_OrderProfit` op
+    ON op.CustomerOrderId = oip.CustomerOrderId
+  WHERE op.OrderCreatedOnUtc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)
+    AND op.OrderStatusId <> 40          -- anulowane nie liczą się do skutku
+    AND op.IdBookstore LIKE 'BOL%'      -- tylko BOL: sprzedaż na innych rynkach nie jest zasługą pilota
+  GROUP BY oip.EAN
+),
 zlaczone AS (
   SELECT
     p.OurEan, p.forced_price,
     bb.RetailerId, bb.FulfilmentMethod, bb.BestOfferPrice, bb.HasOffer, bb.LastCheckedUtc,
     po.Price AS po_price, po.PriceMin AS po_pricemin,
-    ob.cena_w_ofercie_bol
+    ob.cena_w_ofercie_bol,
+    sp.szt_30d, sp.zysk_30d
   FROM pilot p
   LEFT JOIN `itideatestproject.bol_ew3.BolBuyBox_current` bb
          ON bb.Ean = p.OurEan AND bb.MarketplaceId = 'BOL-NL'
@@ -45,6 +60,8 @@ zlaczone AS (
          ON po.SKU = p.OurEan AND po.BookstoreId = 'BOL-NL'
   LEFT JOIN oferta_bol ob
          ON ob.Ean = p.OurEan
+  LEFT JOIN sprzedaz sp
+         ON sp.EAN = p.OurEan
 )
 SELECT
   COUNT(*)                                                          AS Pilot_EAN,
@@ -61,5 +78,10 @@ SELECT
           AND HasOffer
           AND BestOfferPrice < forced_price
           AND BestOfferPrice - krok >= po_pricemin)                 AS Do_re_undercutu,
+  -- SKUTEK: czy z buy-boxa cokolwiek wynika (30 dni, tylko BOL, bez anulowanych)
+  COUNTIF(szt_30d > 0)                                              AS EAN_ze_sprzedaza_30d,
+  IFNULL(SUM(szt_30d), 0)                                           AS Sztuk_30d,
+  ROUND(IFNULL(SUM(zysk_30d), 0), 0)                                AS Zysk_30d_PLN,
+  COUNTIF(RetailerId = nasz AND IFNULL(szt_30d, 0) = 0)             AS Mamy_BB_ale_zero_sprzedazy,
   FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', MAX(LastCheckedUtc))           AS BB_ostatni_check
 FROM (SELECT *, (RetailerId IS NULL OR NOT HasOffer) AS Ean_brak FROM zlaczone)

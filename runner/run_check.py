@@ -59,12 +59,23 @@ def sprawdz_gwiazdke(sql: str) -> None:
             )
 
 
-def koszt_skanu(sql: str) -> float:
+def czytaj_location(sql: str) -> str:
+    """Per-check override regionu: naglowek `-- location: EU` w pliku checku.
+    Domyslnie europe-west3 (mirror BIData). Billing export lezy w EU/US — stad override
+    (job musi jechac w tym samym regionie co dataset, inaczej 'Not found: Dataset ... in location')."""
+    for l in sql.splitlines():
+        s = l.strip()
+        if s.lower().startswith("-- location:"):
+            return s.split(":", 1)[1].strip()
+    return LOCATION
+
+
+def koszt_skanu(sql: str, location: str = LOCATION) -> float:
     """--dry_run: ile GB przeskanuje. Kosztuje 0. Zawsze wolane PRZED wykonaniem."""
     # SQL idzie przez stdin, NIE jako argument: pliki checkow zaczynaja sie od komentarza "--",
     # ktory bq bierze za flage i wywala sie z RecursionError przy podpowiadaniu nazwy flagi.
     p = subprocess.run(
-        ["bq", f"--project_id={PROJECT}", f"--location={LOCATION}", "query",
+        ["bq", f"--project_id={PROJECT}", f"--location={location}", "query",
          "--use_legacy_sql=false", "--dry_run", "--format=json"],
         input=sql, capture_output=True, text=True,
     )
@@ -73,9 +84,9 @@ def koszt_skanu(sql: str) -> float:
     return int(json.loads(p.stdout)["statistics"]["query"]["totalBytesProcessed"]) / 1024**3
 
 
-def wykonaj(sql: str) -> list[dict]:
+def wykonaj(sql: str, location: str = LOCATION) -> list[dict]:
     p = subprocess.run(
-        ["bq", f"--project_id={PROJECT}", f"--location={LOCATION}", "query",
+        ["bq", f"--project_id={PROJECT}", f"--location={location}", "query",
          "--use_legacy_sql=false", "--format=prettyjson"],
         input=sql, capture_output=True, text=True,
     )
@@ -136,15 +147,16 @@ def main() -> int:
     for nazwa in a.check:
         try:
             sql = znajdz_sql(nazwa).read_text(encoding="utf-8")
+            loc = czytaj_location(sql)
             sprawdz_gwiazdke(sql)
-            gb = koszt_skanu(sql)
+            gb = koszt_skanu(sql, loc)
             gb_razem += gb
-            print(f"[{nazwa}] skan: {gb:.3f} GB (~{gb * 5 / 1024 * 4:.3f} zl)")
+            print(f"[{nazwa}] skan: {gb:.3f} GB (~{gb * 5 / 1024 * 4:.3f} zl) [region {loc}]")
             if gb > MAX_SCAN_GB:
                 raise SystemExit(f"BEZPIECZNIK: {gb:.1f} GB > limit {MAX_SCAN_GB} GB — przerwane")
             if a.dry_run:
                 continue
-            tabela = jako_tabela(wykonaj(sql))
+            tabela = jako_tabela(wykonaj(sql, loc))
             print(f"── {nazwa} ──\n{tabela}\n")
             czesci.append(f"*{nazwa}*\n```\n{tabela}\n```")
         except SystemExit:

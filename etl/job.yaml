@@ -67,6 +67,10 @@ spec:
                 - --table=opi_ShippingCost
                 - --table=opi_OrderProfitTag
                 - --table=azymut_BookstoreProductPA
+                - --table=azymut_SupplierPA
+                - --table=azymut_CustomerOrder
+                - --table=azymut_BookstoreProduct
+                - --table=azymut_Dzial
               resources:
                 limits:
                   cpu: "2"

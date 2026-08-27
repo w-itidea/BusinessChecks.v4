@@ -42,6 +42,7 @@ spec:
                 - --check=stratne-daily
                 - --check=stratne-wzorce
                 - --check=stratne-przyczyny
+                - --check=mirror-health
                 - --send=U03787T2DTR          # DM Wojtka
               resources:
                 limits:

@@ -18,10 +18,20 @@ DECLARE nasz      STRING  DEFAULT '1834699';
 DECLARE grupa     STRING  DEFAULT 'MS_repriceing_BolBuyBox20260629';
 DECLARE krok      NUMERIC DEFAULT 0.02;   -- o tyle schodzimy ponizej konkurenta przy re-undercut
 
+-- KOHORTA: tylko pozycje, ktore realnie mamy czym wystawic.
+-- 134 z 523 EAN-ow pilota (25,6%) jest zablokowanych na BOL od 2026-03-02 regula
+-- "Blokada zabawek na BOL" — procka daje im Quantity = 0, wiec nigdy nie trafily
+-- na rynek. Liczone w mianowniku zanizaly wynik pilota: 100/485 = 20,6% zamiast
+-- 100/368 = 27,2%. Zweryfikowane 2026-08-27 na bol_ew3.competing_offers: 133 z nich
+-- ANI RAZU nie pojawily sie w drabinie od startu pilota 29.06.
+-- Regula ogolna: okazja w drabinie konkurencji nie jest dowodem, ze mamy tam oferte.
 WITH pilot AS (
-  SELECT OurEan, ROUND(Price, 2) AS forced_price
-  FROM `polish-bookstores-group.BIData.ofi_AmazonFeedProductSettings`
-  WHERE BookstoreId = 'BOL-NL' AND TestGroupName = grupa AND fIsActive = 1
+  SELECT s.OurEan, ROUND(s.Price, 2) AS forced_price
+  FROM `polish-bookstores-group.BIData.ofi_AmazonFeedProductSettings` s
+  JOIN `polish-bookstores-group.BIData.ofi_PriceOffer` p
+    ON p.BookstoreId = s.BookstoreId AND p.OurEan = s.OurEan
+  WHERE s.BookstoreId = 'BOL-NL' AND s.TestGroupName = grupa AND s.fIsActive = 1
+    AND NOT COALESCE(p.IsBlocked, FALSE) AND p.Quantity > 0
 ),
 -- nasza zywa oferta na BOL: w bol_ew3 moze byc kilka ofert per EAN (rozne kondycje),
 -- wiec skladamy do jednej ceny per EAN (najnizsza sprzedawalna) — odpowiednik dawnego

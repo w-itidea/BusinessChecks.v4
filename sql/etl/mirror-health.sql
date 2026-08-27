@@ -53,6 +53,9 @@ WITH stan AS (
   UNION ALL SELECT 'azymut_CustomerOrder', COUNT(*), COUNT(DISTINCT Id),
          TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(LastUpdateDateUtc), HOUR)
   FROM `polish-bookstores-group.BIData.azymut_CustomerOrder`
+  UNION ALL SELECT 'azymut_BookstoreProduct', COUNT(*), COUNT(DISTINCT Id),
+         TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(LastUpdatedUtc), HOUR)
+  FROM `polish-bookstores-group.BIData.azymut_BookstoreProduct`
 )
 SELECT
   Tabela,

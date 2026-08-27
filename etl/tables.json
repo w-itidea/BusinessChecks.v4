@@ -176,6 +176,41 @@
         "ShippingMethod"
       ],
       "_uwaga_shippingmethod": "ShippingMethod (nvarchar(max)) wywala polaczenie pymssql/FreeTDS bledem 20047 'DBPROCESS is dead' przy pelnym pobraniu - TOP 5 przechodzi, pelny skan nie. Zawartosc jest niewinna (max 66 znakow, brak znakow spoza CP1250), a pozostale 33 kolumny tekstowe skanuja sie bez problemu, wiec to specyfika sterownika, nie danych. Wykluczone jako obejscie - nie jest nam potrzebna (metoda wysylki jest w Shipment/ShipmentMethod). Do zbadania osobno, jesli kiedys bedzie potrzebna."
+    },
+    {
+      "target": "azymut_BookstoreProduct",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "BookstoreProduct",
+      "charset": "UTF-8",
+      "_uwaga_charset": "UTF-8, NIE domyslne CP1250. tytul i autorzy to nvarchar z prawdziwym Unicode (sprzedajemy ksiazki obcojezyczne), wiec pod CP1250 pobranie sie WYWALA: 'charmap' codec can't decode byte 0x81 (FreeTDS konwertuje UCS-2 -> CP1250 i oddaje bajty nie do zdekodowania). Pod UTF-8 pelny skan 1 317 627 wierszy przechodzi, polskie znaki i francuskie 'a' z akcentem sa poprawne. KOSZT: 78 wierszy (0,006%) ma polskie znaki w kolumnach VARCHAR (EAN, ISBN, ISSN) i tam UTF-8 daje 'z' zamiast 'z z kropka'. To i tak smieciowe dane - EAN o tresci '4010070266660ROZ' i ISBN z polpauza to bledy wprowadzania, nie wartosci do uratowania. Zweryfikowane 2026-08-27.",
+      "watermark": "LastUpdatedUtc",
+      "partition_by": null,
+      "cluster_by": [
+        "EAN"
+      ],
+      "_po_co": "Katalog handlowy: tytul, autorzy, wydawca, dzial, jezyki, ceny katalogowe. Bez niego EAN w BQ jest golym numerem i kazda analiza z chmury konczy sie lista identyfikatorow, ktorych nie da sie nazwac. NIE uzywac dbo.Product - tam tytul bywa NULL, a autorzy/wydawca trzymaja kody (PU, PE, KC) zamiast nazw.",
+      "_uwaga_watermark": "LastUpdatedUtc zweryfikowany 2026-08-27: 0 NULL-i, MAX = biezaca godzina, 11 558 wierszy zmienionych w ostatniej dobie, 3 763 rozne dni. Zywy. Czesc wierszy ma placeholder 1977-06-14 jako MIN - to nie przeszkadza, bo wchodza w load poczatkowy, a potem tylko przy realnej zmianie.",
+      "_exclude_why": "opis i fOpis to po 1 387,5 MB kazde (razem 2,78 GB przy ~150 MB calej reszty) - 92% objetosci tabeli na kolumne, ktorej zadna analiza w BQ nie uzywa. Ten sam wzorzec co Reason w ofi_PriceOffer (79%, task 869eqbpqm). Dodatkowo wszystkie trzy sa nvarchar(max), a taki typ wywalil juz polaczenie pymssql/FreeTDS bledem 20047 przy ShippingMethod - wykluczenie zdejmuje i objetosc, i ryzyko sterownika. opisWlasny jest pusty (0 MB), leci razem z nimi. Jesli opis kiedys bedzie potrzebny -> osobna tabela azymut_BookstoreProduct_opis po EAN, zeby nie obciazal codziennego transferu.",
+      "exclude": [
+        "opis",
+        "fOpis",
+        "opisWlasny"
+      ]
+    },
+    {
+      "target": "azymut_Dzial",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "Dzial",
+      "charset": "UTF-8",
+      "_uwaga_charset": "UTF-8 z tego samego powodu co BookstoreProduct. Nazwa jest nvarchar z polskimi znakami i pod domyslnym CP1250 wartosc zostaje UCIETA na pierwszym takim znaku: 'Artykuly szkolne i papiernicze' wjechalo do BQ jako 'Artyku', 'Ksiazki i czasopisma' jako 'Ksi'. Load NIE zglasza bledu - 17 wierszy, zero ostrzezen, dane uszkodzone po cichu. Wykryte dopiero przy sprawdzeniu tresci w BQ 2026-08-27.",
+      "watermark": null,
+      "pelny_reload": true,
+      "partition_by": null,
+      "cluster_by": null,
+      "_po_co": "Slownik 17 dzialow: kod (KC, ZBW, PAP, PU...) -> nazwa czytelna + flagi blokad sprzedazy per sklep. BookstoreProduct.dzial to varchar(5), czyli sam kod - bez tego slownika w BQ jest tak samo bezuzyteczny jak goly SupplierId. 17 wierszy, brak kolumny czasu -> pelne przeladowanie przy kazdym przebiegu (bq load = 0 zl).",
+      "exclude": []
     }
   ]
 }

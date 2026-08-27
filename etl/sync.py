@@ -67,7 +67,7 @@ def log(msg: str) -> None:
 
 # ─────────────────────────── SQL Server ───────────────────────────
 
-def connect(db: str):
+def connect(db: str, charset: str = "CP1250"):
     """Laczy z SQL Server, czekajac az baza bedzie osiagalna.
 
     W Cloud Run baza jest za sidecarem `cloudflared`, ktory potrzebuje kilku sekund na
@@ -92,7 +92,15 @@ def connect(db: str):
                 # "konsumowa³o" zamiast "konsumowało" — czyli mirror rozjezdzal sie ze
                 # zrodlem na kazdym polu tekstowym (Note w tagach, Reason w PriceOffer).
                 # Zweryfikowane empirycznie: UTF-8 i LATIN1 psuja, CP1250 odtwarza poprawnie.
-                charset="CP1250",
+                #
+                # ALE to prawda tylko dla tabel, w ktorych tresc siedzi w kolumnach VARCHAR.
+                # Tabela z prawdziwym Unicode w NVARCHAR (BookstoreProduct: tytul, autorzy —
+                # ksiazki obcojezyczne) pod CP1250 NIE DA SIE POBRAC: FreeTDS probuje
+                # przekonwertowac UCS-2 na CP1250 i oddaje bajty, ktorych Python nie zdekoduje
+                # ('charmap' codec can't decode byte 0x81). Dlatego charset jest przelaczalny
+                # per tabela kluczem "charset" w tables.json. Domyslnie CP1250 — nie zmieniaj
+                # go tabelom, ktore juz dzialaja.
+                charset=charset,
             )
         except Exception as e:
             if time.monotonic() >= czekaj_do:
@@ -392,7 +400,7 @@ WHEN NOT MATCHED THEN INSERT ({ins_cols}) VALUES ({ins_vals})"""
 
 def sync_table(cfg: dict, conf: dict, dry: bool) -> dict:
     log(f"► {cfg['target']}  ({cfg['db']}.{cfg['schema']}.{cfg['table']})")
-    conn = connect(cfg["db"])
+    conn = connect(cfg["db"], cfg.get("charset") or "CP1250")
     try:
         kolumny, pk = describe(conn, cfg["schema"], cfg["table"], cfg.get("exclude") or [])
 

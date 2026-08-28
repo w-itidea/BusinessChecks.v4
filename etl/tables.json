@@ -211,6 +211,51 @@
       "cluster_by": null,
       "_po_co": "Slownik 17 dzialow: kod (KC, ZBW, PAP, PU...) -> nazwa czytelna + flagi blokad sprzedazy per sklep. BookstoreProduct.dzial to varchar(5), czyli sam kod - bez tego slownika w BQ jest tak samo bezuzyteczny jak goly SupplierId. 17 wierszy, brak kolumny czasu -> pelne przeladowanie przy kazdym przebiegu (bq load = 0 zl).",
       "exclude": []
+    },
+    {
+      "target": "fin_Kategoria",
+      "db": "azymut",
+      "schema": "fin",
+      "table": "_OLD_Kategoria",
+      "charset": "UTF-8",
+      "_uwaga_charset": "UTF-8, NIE domyslne CP1250 — wszystkie kolumny tekstowe to nvarchar z polskimi nazwami kategorii. Pod CP1250 wartosc zostaje UCIETA na pierwszym polskim znaku, bez zadnego bledu (tak wjechalo 'Artyku' zamiast 'Artykuly szkolne' w azymut_Dzial).",
+      "watermark": null,
+      "pelny_reload": true,
+      "partition_by": null,
+      "cluster_by": null,
+      "_po_co": "Taksonomia kosztow: 66 kategorii + RodzajKosztu (STALY/ZMIENNY). ROZDZIELA REKLAME OD IT — SPRZ-REKLAMA vs IT-SOFTWARE / IT-INFRASTRUKTURA / IT-INFRASTRUKTURA-CLOUD itd. Osobno SPRZ-AMAZON (prowizje marketplace), SPRZ-PRZYJECIE-PLATNOSCI (PayU), SPRZ-INNE, oraz logistyka per przewoznik. To jest odpowiedz na task 869eqdcjk: kategorie ISTNIEJA i sa poprawne, tylko nie bylo ich w BQ.",
+      "_uwaga_zrodlo": "⚠️ ZRODLO ZAMROZONE 2026-03. Caly lancuch Optima -> SQL Server -> klasyfikacja kosztow padl w marcu 2026: opt.Purchases ma ostatnia fakture 2026-03-24, fin._OLD_Koszty ma w marcu 874 faktury (miesiac urwany), a w kwietniu i maju po JEDNEJ. Tabele przemianowano na _OLD_ 2026-04-14, procedure fin._OLD_ITidea_UpdateAnalizaKosztow wygaszono. NIE traktowac jako stanu biezacego. Dlatego NIE ma tego w args joba - ladowane jednorazowo.",
+      "exclude": []
+    },
+    {
+      "target": "fin_Kontrachent2Kategoria",
+      "db": "azymut",
+      "schema": "fin",
+      "table": "_OLD_Kontrachent2Kategoria",
+      "charset": "UTF-8",
+      "_uwaga_charset": "UTF-8, NIE domyslne CP1250 — wszystkie kolumny tekstowe to nvarchar z polskimi nazwami kategorii. Pod CP1250 wartosc zostaje UCIETA na pierwszym polskim znaku, bez zadnego bledu (tak wjechalo 'Artyku' zamiast 'Artykuly szkolne' w azymut_Dzial).",
+      "watermark": null,
+      "pelny_reload": true,
+      "partition_by": null,
+      "cluster_by": null,
+      "_po_co": "1 255 regul dopasowania kontrahenta do kategorii (KontrachentPattern / InvoicePattern -> KategoriaId). Kluczowe: GOOGLE IRELAND LIMITED -> SPRZ-REKLAMA (2,45 mln/365d), GOOGLE CLOUD POLAND -> IT-INFRASTRUKTURA-CLOUD, AMAZON SERVICES EUROPE -> SPRZ-AMAZON, CARTED -> SPRZ-INNE. Naklada sie na optima_invoices w BQ (po dedupie po InvoiceId i filtrze NOT ENDS_WITH(NumerFaktury,'/W')).",
+      "_uwaga_zrodlo": "⚠️ ZRODLO ZAMROZONE 2026-03. Caly lancuch Optima -> SQL Server -> klasyfikacja kosztow padl w marcu 2026: opt.Purchases ma ostatnia fakture 2026-03-24, fin._OLD_Koszty ma w marcu 874 faktury (miesiac urwany), a w kwietniu i maju po JEDNEJ. Tabele przemianowano na _OLD_ 2026-04-14, procedure fin._OLD_ITidea_UpdateAnalizaKosztow wygaszono. NIE traktowac jako stanu biezacego. Dlatego NIE ma tego w args joba - ladowane jednorazowo.",
+      "exclude": []
+    },
+    {
+      "target": "fin_Koszty",
+      "db": "azymut",
+      "schema": "fin",
+      "table": "_OLD_Koszty",
+      "charset": "UTF-8",
+      "_uwaga_charset": "UTF-8, NIE domyslne CP1250 — wszystkie kolumny tekstowe to nvarchar z polskimi nazwami kategorii. Pod CP1250 wartosc zostaje UCIETA na pierwszym polskim znaku, bez zadnego bledu (tak wjechalo 'Artyku' zamiast 'Artykuly szkolne' w azymut_Dzial).",
+      "watermark": null,
+      "pelny_reload": true,
+      "partition_by": null,
+      "cluster_by": null,
+      "_po_co": "166 tys. faktur kosztowych z przypisana KategoriaId, 2017-05 -> 2026-03, 61 kategorii, 110 miesiecy. Baseline historyczny do porownan — w calym zakresie 100% sklatyfikowane (0 wierszy bez kategorii).",
+      "_uwaga_zrodlo": "⚠️ ZRODLO ZAMROZONE 2026-03. Caly lancuch Optima -> SQL Server -> klasyfikacja kosztow padl w marcu 2026: opt.Purchases ma ostatnia fakture 2026-03-24, fin._OLD_Koszty ma w marcu 874 faktury (miesiac urwany), a w kwietniu i maju po JEDNEJ. Tabele przemianowano na _OLD_ 2026-04-14, procedure fin._OLD_ITidea_UpdateAnalizaKosztow wygaszono. NIE traktowac jako stanu biezacego. Dlatego NIE ma tego w args joba - ladowane jednorazowo. ⚠️ Metodyka: suma z okna '12 miesiecy' wyglada na kompletna (12 022 faktur, 0 bez kategorii), ale te faktury pochodza niemal w calosci sprzed marca. Zawsze patrzec na rozklad PER MIESIAC.",
+      "exclude": []
     }
   ]
 }

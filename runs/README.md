@@ -48,3 +48,4 @@ Sekcje (pomiń te, które nie mają treści — pusty nagłówek jest gorszy ni�
 | 2026-07-21 | [Rozjazd wyceny wysyłki — ~44 tys. zł/mies.](2026-07-21-rozjazd-wyceny-wysylki.md) | ⏳ czeka na odpowiedź Artura |
 | 2026-07-21 | [Test sale EU — Buy Box wrócił, sprzedaż nie](2026-07-21-sale-test-eu.md) | ✅ zamknięte, decyzja podjęta |
 | 2026-07-21 | [Przyczyny strat wg tagów systemowych](2026-07-21-przyczyny-strat.md) | 🔵 do działania |
+| 2026-08-28 | [Spóźnione Amazon: grosze w objawie, ~2 tys. PLN/mies. w przepłatach AssignSupplier](2026-08-28-amazon-spoznione-i-przeplaty.md) | 🔵 do działania |

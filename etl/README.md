@@ -113,6 +113,35 @@ Zmierzone na `ofi_PriceOffer` (14,77 mln wierszy):
 | `SELECT Reason` | 11,49 GB (79% objętości tabeli) |
 
 Wniosek: **nie ma po co rozbijać tabeli, żeby odciąć grube kolumny** — wystarczy ich nie wybierać.
+
+### Bezpiecznik `MAX_SCAN_GB` — dlaczego 40, a nie 20
+
+`ofi_PriceOffer` zmienia **~8,5 mln z 15,4 mln wierszy na dobę**. Tabela nie jest partycjonowana,
+a klastruje po `(BookstoreId, OurEan)` — podczas gdy MERGE łączy po kluczu `Id`. Nie ma więc czego
+przycinać i cel czytany jest w całości: **23,5 GB na przebieg**.
+
+Przy progu 20 GB job padał **każdej nocy**, i to nie za darmo: przy każdej z dwóch prób ciągnął
+~8 mln wierszy z produkcyjnego SQL Servera (~19 min), wrzucał ~850 MB do stagingu i dopiero wtedy
+odbijał się od bezpiecznika — po czym wyrzucał to do kosza. Objaw był mylący, bo scheduler
+raportował `OK` (zawołał job poprawnie), a awaria siedziała w środku przebiegu.
+
+23,5 GB to **~0,5 zł za przebieg, ~15 zł/mies.** Rozważana alternatywa — `pelny_reload`, czyli
+`bq load` za 0 zł — została odrzucona: pełny pull to ~34 min zamiast 19 przy **timeoucie 60 min**,
+więc margines topniałby wraz z tabelą, a oszczędność to piętnaście złotych.
+
+Bezpiecznik dalej działa — 40 GB nadal złapie zapytanie, które naprawdę zwariowało.
+
+### ⚠️ `gcloud run jobs update` na jobie z sidecarem
+
+Job ma dwa kontenery (`etl` + `cloudflared`), więc **`--container etl` jest obowiązkowe**.
+Bez niego gcloud nie zgłasza czytelnego błędu, tylko wypisuje `Job failed to deploy`
+i wywala się na `ValueError: the target job has multiple containers`:
+
+```bash
+gcloud run jobs update bidata-bq-sync --region=europe-north1 \
+  --project=erp-production-438714 \
+  --container etl --update-env-vars MAX_SCAN_GB=40
+```
 Rozważaliśmy wyniesienie `Reason` do osobnej tabeli; to byłby JOIN i drugi obiekt do utrzymania
 w zamian za efekt, który storage kolumnowy daje za darmo. Odrzucone.
 

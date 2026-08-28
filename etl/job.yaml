@@ -86,9 +86,17 @@ spec:
                     secretKeyRef:
                       name: db-mssql-azymut-readonly-password
                       key: latest
-                # Bezpiecznik kosztowy — MERGE/watermark ponad ten skan przerywa robote
+                # Bezpiecznik kosztowy — MERGE/watermark ponad ten skan przerywa robote.
+                # 40, nie 20: ofi_PriceOffer zmienia ~8,5 mln z 15,4 mln wierszy na dobe, a tabela
+                # nie jest partycjonowana i klastruje po (BookstoreId, OurEan), podczas gdy MERGE
+                # laczy po kluczu Id — nie ma czego przycinac, wiec cel czytany jest w calosci
+                # (23,5 GB). Przy 20 GB job padal KAZDEJ nocy, po dwoch probach, za kazdym razem
+                # ciagnac ~8 mln wierszy z produkcyjnego SQL Servera i wyrzucajac je do kosza.
+                # 23,5 GB to ~0,5 zl za przebieg, ~15 zl/mies — swiadomie tanszy wybor niz
+                # zjadanie zapasu czasu w jobie pelnym przeladowaniem (60 min timeout).
+                # Bezpiecznik dalej dziala: 40 GB nadal zlapie zapytanie, ktore naprawde zwariowalo.
                 - name: MAX_SCAN_GB
-                  value: "20"
+                  value: "40"
 
             # ── tunel do SQL Server (sql.fkwt.pl) ──────────────────
             - name: cloudflared

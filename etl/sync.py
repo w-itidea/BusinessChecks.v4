@@ -331,16 +331,18 @@ def get_watermark(cfg: dict, conf: dict) -> str | None:
     return wart or None
 
 
-def load_parts(cfg: dict, conf: dict, kolumny: list[dict], parts: list[Path], cel: str) -> None:
+def load_parts(cfg: dict, conf: dict, kolumny: list[dict], parts: list[Path], cel: str,
+               replace_first: bool = True) -> None:
     """Laduje porcjami do wskazanej tabeli. Pierwsza z --replace, reszta dopisuje.
-    Kazda porcja ma wlasne ponowienia — zerwane polaczenie nie przekresla calej tabeli."""
+    Kazda porcja ma wlasne ponowienia — zerwane polaczenie nie przekresla calej tabeli.
+    replace_first=False -> czyste dopisywanie (tryb append_log: cel jest logiem, nie stanem)."""
     project, dataset, location = conf["project"], conf["dataset"], conf["location"]
     staging = cel
     schema = ",".join(f"{k['nazwa']}:{k['bq']}" for k in kolumny)
     log(f"    laduje do {staging}: {len(parts)} porcji (bq load = 0 zl)")
 
     for i, p in enumerate(parts):
-        flagi = ["--replace"] if i == 0 else []
+        flagi = ["--replace"] if (i == 0 and replace_first) else []
         for proba in range(1, RETRIES + 1):
             try:
                 bq([f"--project_id={project}", f"--location={location}", "load", *flagi,
@@ -398,16 +400,35 @@ WHEN NOT MATCHED THEN INSERT ({ins_cols}) VALUES ({ins_vals})"""
 
 # ─────────────────────────── orkiestracja ───────────────────────────
 
-def sync_table(cfg: dict, conf: dict, dry: bool) -> dict:
+def sync_table(cfg: dict, conf: dict, dry: bool, opisz: bool = False) -> dict:
     log(f"► {cfg['target']}  ({cfg['db']}.{cfg['schema']}.{cfg['table']})")
     conn = connect(cfg["db"], cfg.get("charset") or "CP1250")
     try:
         kolumny, pk = describe(conn, cfg["schema"], cfg["table"], cfg.get("exclude") or [])
 
+        if opisz:
+            # --describe: tylko wypisz schemat zrodla i wyjdz. Sluzy do weryfikacji nazw
+            # (watermark/partition/cluster) w tables.json PRZED pierwszym syncem nowej tabeli,
+            # bez dotykania BigQuery. Wymaga VPN/tunelu, jak kazde polaczenie do zrodla.
+            log(f"  PK: {', '.join(pk) if pk else '(brak)'}")
+            for k in kolumny:
+                log(f"    {k['nazwa']:42s} {k['bq']}")
+            return {"target": cfg["target"], "wierszy": None, "tryb": "describe"}
+
+        # append_log: cel jest LOGIEM przyrostowym, nie lustrem stanu. Kazdy przebieg DOPISUJE
+        # wiersze zmienione od watermarku (bq load = 0 zl, zero MERGE), wiec zostaje HISTORIA
+        # wersji wiersza — a stan biezacy daje widok *_current (QUALIFY ROW_NUMBER po PK).
+        # Wzorzec dla duzych, goracych tabel, gdzie MERGE kosztuje (lekcja: ofi_PriceOffer
+        # = 75% kosztu automatu) i gdzie historia zmian ma wartosc (WarehouseRequest: ETA).
+        applog = bool(cfg.get("append_log"))
+        if applog and not cfg.get("watermark"):
+            raise RuntimeError("append_log wymaga watermark — bez niego kazdy przebieg dublowalby cala tabele")
+
         # Tabela bez PK nie da sie MERGE-owac. Dla malych tabel (BolOffersFirstOffer: 112 tys.
         # wierszy, 17 MB) najprostsze i najtansze jest pelne przeladowanie: bq load jest darmowy,
         # a brak MERGE oznacza zero skanu. Wlacza sie samo albo jawnie przez "pelny_reload".
-        pelny = cfg.get("pelny_reload") or not pk
+        # W trybie append_log brak PK nie przeszkadza — MERGE i tak sie nie wykonuje.
+        pelny = (cfg.get("pelny_reload") or not pk) and not applog
         if pelny and not pk:
             log("  brak PK -> pelne przeladowanie przy kazdym przebiegu (tabela mala, load = 0 zl)")
         log(f"  kolumn: {len(kolumny)}, PK: {', '.join(pk) if pk else '(brak)'}")
@@ -435,6 +456,11 @@ def sync_table(cfg: dict, conf: dict, dry: bool) -> dict:
                 # a MERGE na 14 mln wierszy kosztowalby skan kilkunastu GB bez zadnego zysku.
                 log("  cel pusty -> ladowanie bezposrednie, MERGE pominiety (skan 0 zl)")
                 load_parts(cfg, conf, kolumny, parts, cfg["target"])
+            elif applog:
+                # Dopisujemy delte wprost do logu. Duplikaty z nakladki watermarku (OVERLAP_MIN)
+                # sa OCZEKIWANE — rozstrzyga je widok *_current, nie ETL. Zadnego --replace!
+                log("  append_log -> dopisuje delte do celu, bez MERGE (skan 0 zl)")
+                load_parts(cfg, conf, kolumny, parts, cfg["target"], replace_first=False)
             else:
                 load_parts(cfg, conf, kolumny, parts, f"{cfg['target']}{conf['staging_suffix']}")
                 merge(cfg, conf, kolumny, pk)
@@ -451,6 +477,8 @@ def main() -> int:
     ap.add_argument("--table", action="append", help="nazwa targetu; mozna podac wielokrotnie")
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--describe", action="store_true",
+                    help="tylko wypisz kolumny i PK zrodla (weryfikacja tables.json przed pierwszym syncem)")
     a = ap.parse_args()
 
     conf = json.loads(CONFIG.read_text(encoding="utf-8"))
@@ -465,7 +493,7 @@ def main() -> int:
     wyniki, bledy = [], []
     for cfg in wybrane:
         try:
-            wyniki.append(sync_table(cfg, conf, a.dry_run))
+            wyniki.append(sync_table(cfg, conf, a.dry_run, a.describe))
         except Exception as e:                       # jeden stol nie moze zabic calego przebiegu
             log(f"  ✗ {cfg['target']}: {e}")
             bledy.append((cfg["target"], str(e)))

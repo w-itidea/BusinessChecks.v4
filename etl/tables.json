@@ -178,6 +178,24 @@
       "_uwaga_shippingmethod": "ShippingMethod (nvarchar(max)) wywala polaczenie pymssql/FreeTDS bledem 20047 'DBPROCESS is dead' przy pelnym pobraniu - TOP 5 przechodzi, pelny skan nie. Zawartosc jest niewinna (max 66 znakow, brak znakow spoza CP1250), a pozostale 33 kolumny tekstowe skanuja sie bez problemu, wiec to specyfika sterownika, nie danych. Wykluczone jako obejscie - nie jest nam potrzebna (metoda wysylki jest w Shipment/ShipmentMethod). Do zbadania osobno, jesli kiedys bedzie potrzebna."
     },
     {
+      "target": "azymut_WarehouseRequest",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "WarehouseRequest",
+      "watermark": "LastUpdated",
+      "append_log": true,
+      "partition_by": "CreatedOnUtc",
+      "partition_granularity": "MONTH",
+      "cluster_by": [
+        "SupplierId",
+        "CustomerOrderId"
+      ],
+      "_po_co": "Zamowienia DO dostawcow: jedyne zrodlo atrybucji zamowienie->dostawca (tag 35 dziala tylko dla Libri) i pomiaru ETA obiecane-vs-dowiezione. Bez tego rankingu wiarygodnosci dostawcow nie da sie policzyc (runs/2026-08-28-amazon-spoznione-i-przeplaty.md).",
+      "_tryb_append": "append_log: tabela duza i goraca, MERGE by kosztowal (lekcja ofi_PriceOffer = 75% kosztu automatu). Kazdy przebieg DOPISUJE wiersze zmienione od watermarku -> w BQ zostaje HISTORIA wersji (zmiany statusu co ~8h), stan biezacy daje widok azymut_WarehouseRequest_current (sql/etl/azymut-warehouserequest-current.sql; zaloz go PO pierwszym syncu).",
+      "_uwaga_niezweryfikowane": "NAZWY KOLUMN (watermark/partition/cluster) ZGADNIETE wg konwencji siostrzanych tabel — zrodlo nieosiagalne spoza VPN w chwili pisania. PRZED deployem odpal na VPN: python3 -m etl.sync --table azymut_WarehouseRequest --describe i popraw nazwy. Bledna nazwa = glosny fail przebiegu, nie ciche smieci.",
+      "exclude": []
+    },
+    {
       "target": "azymut_BookstoreProduct",
       "db": "azymut",
       "schema": "dbo",

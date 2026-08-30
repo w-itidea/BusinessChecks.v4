@@ -113,6 +113,14 @@ Patrz `runs/README.md`. Trzy pierwsze: rozjazd wyceny (~44 tys. zł/mies.), test
 
 ## 🔵 Co do zrobienia
 
+- [ ] **Mirror `azymut_WarehouseRequest` (append-log) — zweryfikować i wdrożyć.** Kod gotowy
+      (tryb `append_log` w `etl/sync.py`, wpis w `tables.json`, widok
+      `sql/etl/azymut-warehouserequest-current.sql`), ale **nazwy kolumn zgadnięte** — przed
+      deployem na VPN: `python3 -m etl.sync --table azymut_WarehouseRequest --describe`,
+      poprawić nazwy, pierwszy sync, założyć widok. Potem uzupełnić kolumny w
+      `sql/reports/dostawcy-eta.sql` (pomiar ETA dostawców — warunek zmiany AssignSupplier,
+      patrz `runs/2026-08-28-amazon-spoznione-i-przeplaty.md`).
+
 - [x] ✅ **Checki BOL przełączone z mirrora na `itideatestproject.bol_ew3`** (2026-08-26).
       `bol-buybox` i `fosa-ab` czytają `BolBuyBox_current` / `our_offers_current`; oba mirrory
       (`mka_BolBuyBox`, `azymut_BolOffersFirstOffer`) usunięte z ETL i z BigQuery. Pokrycie

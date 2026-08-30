@@ -74,8 +74,13 @@ z obecnego mirrora** — `SupplierPA` jest nadpisywany (stan bieżący, bez hist
 
 - **Ranking wiarygodności dostawców** (obiecany stan → nie dowieźli): wymaga mirrora
   `WarehouseRequest` (zamówienie → dostawca → czy zrealizował) — bez niego atrybucja
-  spóźnienia do dostawcy istnieje tylko dla Libri (tag 35). Do wyceny: jeden wpis w
-  `etl/tables.json`, wzór jest. Nikt jeszcze nie zapytany.
+  spóźnienia do dostawcy istnieje tylko dla Libri (tag 35).
+  → **2026-08-28, zbudowane (czeka na weryfikację):** tryb `append_log` w `etl/sync.py`
+  (log przyrostowy bez MERGE — historia wersji zostaje, stan bieżący daje widok `_current`;
+  duża/gorąca tabela, lekcja `ofi_PriceOffer`), wpis w `tables.json`, widok w
+  `sql/etl/azymut-warehouserequest-current.sql`, szkielet pomiaru w
+  `sql/reports/dostawcy-eta.sql`. **Nazwy kolumn zgadnięte** — źródło za VPN; przed deployem
+  `python3 -m etl.sync --table azymut_WarehouseRequest --describe` i poprawka nazw.
 - Czy ETA dostawców (DispatchDays w SupplierPA) jest wiarygodna per dostawca? Jeśli Platon
   systematycznie łamie własne ETA, „wybieraj tańszego" może zwiększyć spóźnienia — to trzeba
   zmierzyć PRZED zmianą AssignSupplier (na mirrorze WarehouseRequest).

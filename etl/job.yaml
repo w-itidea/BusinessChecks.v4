@@ -71,6 +71,9 @@ spec:
                 - --table=azymut_CustomerOrder
                 - --table=azymut_BookstoreProduct
                 - --table=azymut_Dzial
+                # append_log (historia wersji, bez MERGE); PRZED deployem zweryfikuj nazwy
+                # kolumn: python3 -m etl.sync --table azymut_WarehouseRequest --describe
+                - --table=azymut_WarehouseRequest
               resources:
                 limits:
                   cpu: "2"

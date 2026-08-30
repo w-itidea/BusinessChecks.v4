@@ -49,6 +49,7 @@ SQL Server (za VPN)                    BigQuery @ europe-west3
 | `azymut_BookstoreProductPA` | 1,31 mln | `azymut.dbo.BookstoreProductPA` | co 8 h |
 | `azymut_SupplierPA` | 5,35 mln | `azymut.dbo.SupplierPA` — dostępność/cena per dostawca × EAN | co 8 h |
 | `azymut_CustomerOrder` | 3,19 mln | `azymut.dbo.CustomerOrder` — **zanonimizowany** (patrz niżej) | co 8 h |
+| `azymut_WarehouseRequest` | ⏳ czeka na 1. sync | `azymut.dbo.WarehouseRequest` — **append-log** (historia wersji; stan bieżący: widok `_current`) | co 8 h |
 | `platon_wydobco_cohort` | 7,7 tys. | statyczna kohorta listy Platona | — |
 | `fosa_ab_cohort` | 20 tys. | statyczna kohorta testu A/B | — |
 

@@ -22,10 +22,31 @@ np. scrapując własne wiadomości ze Slacka.
 | `ofi_PriceOffer` | `BIData.ofi.PriceOffer` | `Id` | `LastUpdatedOnUtc` |
 | `ofi_AmazonFeedProductSettings` | `BIData.ofi.AmazonFeedProductSettings` | `Id` | `LastModifiedOnUtc` |
 | `azymut_BookstoreProductPA` | `azymut.dbo.BookstoreProductPA` | `EAN` | `LastModifiedOnUtc` |
+| `azymut_WarehouseRequest` | `azymut.dbo.WarehouseRequest` | — (append-log) | `LastUpdated` ⚠️ do weryfikacji |
+
+(Tabela wyżej jest niepełna — pełna lista z uwagami żyje w `tables.json`; główny README ma liczniki.)
 
 Kolumny i klucz główny są **wykrywane z katalogu źródła** przy każdym przebiegu — dodanie kolumny
 w SQL Serverze nie wymaga zmiany kodu. Konfiguracja (`tables.json`) trzyma tylko to, czego nie da
 się wywnioskować: watermark, partycję, klastrowanie i wykluczenia. Tabele bez klucza głównego idą przez **pełne przeładowanie** zamiast MERGE (małe, `bq load` darmowy).
+
+### Tryb `append_log` (od 2026-08-28)
+
+Trzeci tryb obok MERGE i pełnego przeładowania, dla tabel **dużych, gorących i z wartościową
+historią zmian** (pierwsza: `azymut_WarehouseRequest`). Każdy przebieg **dopisuje** wiersze
+zmienione od watermarku (`bq load` = 0 zł) i nie robi MERGE w ogóle — czyli:
+
+- w BQ zostaje **historia wersji wiersza** (np. przejścia statusów co ~8 h) — to jest feature,
+  nie brud; bez niej pomiar „obiecane vs dowiezione" (ETA dostawców) nie istnieje;
+- **stan bieżący daje widok `*_current`** (`QUALIFY ROW_NUMBER()` po PK, najświeższy watermark) —
+  checki stanu czytają wyłącznie widok, po logu jeżdżą tylko analizy historii;
+- duplikaty w logu (nakładka `OVERLAP_MIN`, wersje wiersza) są **oczekiwane** — rozstrzyga je
+  widok; w `mirror-health` dedup liczyć na widoku, nie na logu;
+- koszt MERGE znika w całości (na `ofi_PriceOffer` MERGE to ~75% kosztu automatu); rośnie tylko
+  storage, a ten jest groszowy.
+
+Weryfikacja nazw kolumn nowej tabeli przed pierwszym syncem: `python3 -m etl.sync
+--table <target> --describe` (wypisuje kolumny i PK źródła, niczego nie ładuje; wymaga VPN).
 
 > ✅ **Mirrory BOL wycofane (2026-08-26).** `mka_BolBuyBox` i `azymut_BolOffersFirstOffer` były
 > mirrorem stanu bieżącego BOL, bo prawdziwe dane leżały w `EU` i nie joinowały się z `europe-west3`.

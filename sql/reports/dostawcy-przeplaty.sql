@@ -1,5 +1,5 @@
 -- CHECK: przeplaty AssignSupplier — kupilismy drozej, choc tanszy dostawca miescil sie w terminie
--- @opis Ile PLN przeplacamy, bo AssignSupplier wybiera szybszego zamiast tanszego dostawce.
+-- @opis Ile PLN przepłacamy, bo AssignSupplier wybiera szybszego zamiast tańszego dostawcę (tag 41).
 --
 -- Zrodlo: BIData.opi_OrderProfitTag, TagId 41. System sam taguje kazde zamowienie, przy ktorym
 -- kupiono u dostawcy X, choc dostawca Y mial taniej I OBAJ miescili sie w terminie wysylki.

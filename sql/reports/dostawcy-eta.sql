@@ -1,4 +1,5 @@
 -- CHECK (SZKIELET): wiarygodnosc ETA dostawcow — obiecane vs dowiezione.
+-- @opis Który dostawca dowozi swoje deklarowane terminy, a który systematycznie je łamie.
 --
 -- ⚠️ NIE URUCHAMIAC, dopoki mirror azymut_WarehouseRequest nie przejdzie pierwszego syncu
 -- i nazwy kolumn nie zostana zweryfikowane (--describe). Kolumny oznaczone [?] sa ZGADNIETE.

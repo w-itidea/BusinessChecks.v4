@@ -14,6 +14,12 @@
 --   python3 -m etl.sync --table azymut_WarehouseRequest --describe   (na VPN)
 -- i popraw ponizej, zanim widok powstanie.
 
+-- ⚠️ mirror-health: po pierwszym syncu dolozyc galaz UNION dla tej tabeli, ale z dedupem
+-- liczonym NA WIDOKU _current, nie na logu — duplikaty w logu sa CECHA trybu append_log
+-- (nakladka watermarku + wersje wiersza), nie awaria. Galaz na surowym logu krzyczalaby
+-- codziennie, a alarm, ktory zawsze wyje, przestaje cokolwiek znaczyc (lekcja z
+-- ofi_AmazonFeedProductSettings w mirror-health.sql).
+
 CREATE OR REPLACE VIEW `polish-bookstores-group.BIData.azymut_WarehouseRequest_current` AS
 SELECT *
 FROM `polish-bookstores-group.BIData.azymut_WarehouseRequest`

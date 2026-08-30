@@ -84,6 +84,13 @@ z obecnego mirrora** — `SupplierPA` jest nadpisywany (stan bieżący, bez hist
 - Czy ETA dostawców (DispatchDays w SupplierPA) jest wiarygodna per dostawca? Jeśli Platon
   systematycznie łamie własne ETA, „wybieraj tańszego" może zwiększyć spóźnienia — to trzeba
   zmierzyć PRZED zmianą AssignSupplier (na mirrorze WarehouseRequest).
+- **KOREKTA 2026-08-28 (po dokładnej lekturze repo):** teza „historii obietnic dostawców nie
+  ma" jest za mocna — w źródle istnieje **`SupplierPA_History`** (używana przy diagnozie zmiany
+  formatu Platona 2026-08-25, patrz nagłówek `sql/reports/platon-wydobco-ekspozycja.sql`).
+  Czyli „stan u dostawcy w dniu wystawienia/zamówienia" może być odtwarzalny wstecz — do
+  sprawdzenia rozmiar i retencja tej tabeli; kandydat na drugi mirror `append_log`, gdyby
+  retencja była krótka. To wzmacnia wykonalność pomiaru przyczyny źródłowej
+  („obiecany stan, który się nie ziścił").
 - Dlaczego tag 35 tylko dla Libri — celowe (pilot?) czy niedokończone? Nikt nie zapytany.
 
 ## Ślady

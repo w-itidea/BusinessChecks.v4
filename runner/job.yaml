@@ -43,6 +43,7 @@ spec:
                 - --check=stratne-wzorce
                 - --check=stratne-przyczyny
                 - --check=mirror-health
+                - --check=amazon-raporty-pokrycie
                 - --send=U03787T2DTR          # DM Wojtka
               resources:
                 limits:

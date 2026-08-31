@@ -98,6 +98,7 @@ Konto serwisowe: `businesschecks@erp-production-438714.iam.gserviceaccount.com`.
 | `bol-buybox` | pilot BOL buy-box + propagacja forced ceny | 0,07 GB | zastępuje `bol_buybox_slack.sh` |
 | `fosa-ab` | test A/B fosa (+4% ExtraMargin), diff-in-diff per dobę | 0,15 GB | zastępuje `fosa_ab_slack.sh` |
 | `buybox-sale-profitability` | Buy Box + zyskowność kohorty sale EU | 0,78 GB | — |
+| `amazon-raporty-pokrycie` | czy raporty Amazona w ogole doplywaja — per raport i rynek | 0,00 GB | porownuje z **jawna lista oczekiwanych**, nie z kolejka: cisza != spokoj |
 | `platon-wydobco-ekspozycja` | ile z oferty Platona realnie wystawiamy, wg przedziałów stanu | 0,18 GB | wartownik formatu feedu |
 | `platon-wydobco-sprzedaz` | sprzedaż i realizacja listy vs **reszta katalogu** | 0,20 GB | kontrola sezonowa w wyniku |
 

@@ -71,6 +71,8 @@ spec:
                 - --table=azymut_CustomerOrder
                 - --table=azymut_BookstoreProduct
                 - --table=azymut_Dzial
+                - --table=selly_BundleDefinitions
+                - --table=selly_BundleComponents
               resources:
                 limits:
                   cpu: "2"

@@ -256,6 +256,34 @@
       "_po_co": "166 tys. faktur kosztowych z przypisana KategoriaId, 2017-05 -> 2026-03, 61 kategorii, 110 miesiecy. Baseline historyczny do porownan — w calym zakresie 100% sklatyfikowane (0 wierszy bez kategorii).",
       "_uwaga_zrodlo": "⚠️ ZRODLO ZAMROZONE 2026-03. Caly lancuch Optima -> SQL Server -> klasyfikacja kosztow padl w marcu 2026: opt.Purchases ma ostatnia fakture 2026-03-24, fin._OLD_Koszty ma w marcu 874 faktury (miesiac urwany), a w kwietniu i maju po JEDNEJ. Tabele przemianowano na _OLD_ 2026-04-14, procedure fin._OLD_ITidea_UpdateAnalizaKosztow wygaszono. NIE traktowac jako stanu biezacego. Dlatego NIE ma tego w args joba - ladowane jednorazowo. ⚠️ Metodyka: suma z okna '12 miesiecy' wyglada na kompletna (12 022 faktur, 0 bez kategorii), ale te faktury pochodza niemal w calosci sprzed marca. Zawsze patrzec na rozklad PER MIESIAC.",
       "exclude": []
+    },
+    {
+      "target": "selly_BundleDefinitions",
+      "db": "azymut",
+      "schema": "selly",
+      "table": "BundleDefinitions",
+      "charset": "UTF-8",
+      "_uwaga_charset": "UTF-8 z tego samego powodu co azymut_Dzial: Name i Description to nvarchar z polskimi znakami. Pod CP1250 'Zestaw: Teoria Pozwol im + Regula 5 sekund' zostaloby uciete na pierwszym polskim znaku, BEZ bledu przy loadzie.",
+      "watermark": null,
+      "pelny_reload": true,
+      "partition_by": null,
+      "cluster_by": null,
+      "_po_co": "Definicje zestawow rabatowych Slowianina (kup 2 -> -10%). SellySetId != NULL = zestaw jest na sklepie; NULL = czeka na sync. Bez tego nie da sie zmierzyc, czy 678 wstawionych zestawow realnie dojechalo do Selly.",
+      "_dlaczego_pelny_reload": "708 wierszy, load = 0 zl. Wazniejsze: MERGE nie usuwa wierszy z targetu, wiec skasowanie zestawu u zrodla nigdy by sie nie odbilo w mirrorze. Przy tabeli, ktora ma pokazywac ILE zestawow istnieje, to dyskwalifikuje MERGE.",
+      "exclude": []
+    },
+    {
+      "target": "selly_BundleComponents",
+      "db": "azymut",
+      "schema": "selly",
+      "table": "BundleComponents",
+      "watermark": null,
+      "pelny_reload": true,
+      "partition_by": null,
+      "cluster_by": null,
+      "_po_co": "Sklad zestawow: BundleId -> Ean (po 2 na zestaw). Potrzebne, zeby sparowac zestaw ze sprzedaza: zamowienie liczy sie jako 'kupione przez zestaw' dopiero gdy zawiera OBA EAN-y.",
+      "_dlaczego_pelny_reload": "1416 wierszy i BRAK kolumny czasu (Id, BundleId, Ean, Quantity, AllowIncrease) - nie ma z czego zrobic watermarku. Pelne przeladowanie, load = 0 zl.",
+      "exclude": []
     }
   ]
 }

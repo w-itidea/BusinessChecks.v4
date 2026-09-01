@@ -39,11 +39,14 @@ spec:
                 - -m
                 - runner.run_check
                 - --tytul=Stratne zamówienia — raport dzienny
+                - --check=stratne-wg-planu
                 - --check=stratne-daily
                 - --check=stratne-wzorce
                 - --check=stratne-przyczyny
                 - --check=mirror-health
                 - --check=amazon-raporty-pokrycie
+                - --check=amazon-negatywy-cisza
+                - --check=stratne-kierunki
                 - --send=U03787T2DTR          # DM Wojtka
               resources:
                 limits:

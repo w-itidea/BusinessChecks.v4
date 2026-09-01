@@ -1,5 +1,6 @@
 -- CHECK: pokrycie raportow Amazona — czy dane o koncie w ogole do nas doplywaja.
 -- @opis Ktorych raportow Amazona brakuje i na ktorych rynkach jestesmy slepi. Cisza nie znaczy spokoj.
+-- @cisza-gdy-pusto
 --
 -- Po co ten check istnieje (2026-08-31):
 -- Maszyneria pobierania raportow dziala od lat, ale NIKT nad nia nie stal. Skutki, wykryte recznie:

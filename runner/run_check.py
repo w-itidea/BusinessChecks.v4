@@ -85,6 +85,22 @@ def czytaj_opis(sql: str) -> str:
     return ""
 
 
+def czytaj_cisze(sql: str) -> bool:
+    """Czy check ma MILCZEC, gdy nic nie znalazl. Naglowek w checku:
+    `-- @cisza-gdy-pusto`
+
+    Po co: check, ktory codziennie melduje "wszystko ok", uczy czytac wiadomosc po
+    diagonali, a potem przegapia sie ten jeden dzien, w ktorym cos jest nie tak.
+    Raport ma sie odzywac, kiedy jest problem — nie kiedy go nie ma.
+
+    ⚠️ To NIE jest wykrywacz awarii pipeline'u. Pusty wynik moze znaczyc "nie ma
+    problemow" albo "dane przestaly plynac", a runner tych dwoch nie rozroznia i nie
+    powinien zgadywac. Od "czegos nie ma od X dni" sa OSOBNE checki, ktore pytaja
+    o to wprost w SQL — patrz amazon-negatywy-cisza.sql.
+    """
+    return any(l.strip().lower().startswith("-- @cisza-gdy-pusto") for l in sql.splitlines())
+
+
 def czytaj_link_dyrektywe(sql: str):
     """Opcjonalna stopka klikalnych linkow. Naglowek w checku:
     `-- @link <Kolumna> <url-z-{}>`  np.
@@ -188,7 +204,7 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="policz koszt skanu i zakoncz")
     a = ap.parse_args()
 
-    czesci, gb_razem, bledy = [], 0.0, []
+    czesci, gb_razem, bledy, pominiete = [], 0.0, [], []
     for nazwa in a.check:
         try:
             sql = znajdz_sql(nazwa).read_text(encoding="utf-8")
@@ -204,6 +220,10 @@ def main() -> int:
             wiersze = wykonaj(sql, loc)
             tabela = jako_tabela(wiersze)
             print(f"── {nazwa} ──\n{tabela}\n")
+            if not wiersze and czytaj_cisze(sql):
+                print(f"[{nazwa}] pusto — pomijam w wiadomosci (@cisza-gdy-pusto)")
+                pominiete.append(nazwa)
+                continue
             opis = czytaj_opis(sql)
             naglowek_checku = f"*{nazwa}*" + (f"\n_{opis}_" if opis else "")
             blok = f"{naglowek_checku}\n```\n{tabela}\n```"
@@ -223,10 +243,18 @@ def main() -> int:
     if a.dry_run:
         return 0
 
+    # Nic do powiedzenia = nic nie wysylamy. Wiadomosc "dzis nie ma nic" tez jest halasem.
+    if a.send and not czesci and not bledy:
+        print(f"cisza — wszystkie checki puste ({', '.join(pominiete) or 'brak wynikow'}), nie wysylam")
+        return 0
+
     if a.send and (czesci or bledy):
         naglowek = f"*{a.tytul}* — {dt.date.today():%Y-%m-%d}"
+        # Pominiete wymieniamy JEDNA linijka, zeby bylo wiadomo, ze check przebiegl
+        # i nic nie znalazl — inaczej "brak wiadomosci" nie do odroznienia od "check padl".
+        ciche = f"_bez uwag: {', '.join(pominiete)}_" if pominiete else ""
         stopka = f"_skan {gb_razem:.2f} GB (~{gb_razem * 5 / 1024 * 4:.3f} zł)_"
-        wyslij(a.send, "\n\n".join([naglowek, *czesci, *bledy, stopka]))
+        wyslij(a.send, "\n\n".join(x for x in [naglowek, *czesci, *bledy, ciche, stopka] if x))
     return 1 if bledy else 0
 
 

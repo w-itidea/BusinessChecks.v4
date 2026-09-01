@@ -1,4 +1,6 @@
 -- CHECK: zdrowie mirrora SQL Server -> BigQuery.
+-- @opis Czy mirror w BigQuery jest zdrowy — odzywa się tylko przy duplikatach klucza albo zastoju ETL.
+-- @cisza-gdy-pusto
 --
 -- Po co. Zepsuty mirror nie wyglada na zepsuty — wyglada na dane. Przy dokladaniu
 -- azymut_CustomerOrder (2026-08-26) load padl w polowie przez limit 4000 partycji i zostawil
@@ -70,4 +72,10 @@ SELECT
     ELSE '✅'
   END                                                         AS Status
 FROM stan
+-- ⚠️ MILCZYMY, GDY WSZYSTKO DZIALA (decyzja Wojtka 2026-09-01: „po co mi informacja,
+-- ze cos dziala"). Dziesiec wierszy „✅" codziennie uczy przewijac wiadomosc, a wtedy
+-- check przestaje pelnic swoja funkcje — przegapia sie ten jeden dzien z ❌.
+-- Tabela ustawien wylaczona z progu zastoju: z zalozenia zmienia sie rzadko.
+WHERE (Wierszy - Unikalnych) > 0
+   OR (Wiek_h > prog_zastoju_h AND Tabela <> 'ofi_AmazonFeedProductSettings')
 ORDER BY (Wierszy - Unikalnych) DESC, Wiek_h DESC

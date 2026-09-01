@@ -1,5 +1,10 @@
 -- CHECK: PRZYCZYNY strat — nie "co sie stalo", tylko "dlaczego".
 -- @opis Co konkretnie zjadło marżę na stratnych zamówieniach — rozbicie na czynniki, nie na objawy.
+-- @cisza-gdy-pusto
+--
+-- ⏱ RYTM TYGODNIOWY (decyzja Wojtka 2026-09-01): agregat to WZORZEC, a wzorzec
+-- nie zmienia sie z dnia na dzien. Codzienne powtarzanie tej samej tabeli uczy ja
+-- pomijac. Guard na dzien tygodnia jest w WHERE; poza poniedzialkiem check milczy.
 --
 -- Kubel z stratne-daily mowi RODZAJ ("wysylka zjada marze"). Ten check mowi POWOD,
 -- bo laczy strate z tagami, ktore systemy same zapisuja w opi_OrderProfitTag:
@@ -22,7 +27,8 @@ DECLARE dni_wstecz INT64 DEFAULT 7;
 WITH stratne AS (
   SELECT CustomerOrderId, Profit_Actual, IdBookstore
   FROM `polish-bookstores-group.BIData.opi_OrderProfit`
-  WHERE OrderCreatedOnUtc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL dni_wstecz DAY)
+  WHERE EXTRACT(DAYOFWEEK FROM CURRENT_DATE()) = 2
+  AND OrderCreatedOnUtc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL dni_wstecz DAY)
     AND OrderStatusId <> 40
     AND IsDoneCalculating
     AND Profit_Actual < 0

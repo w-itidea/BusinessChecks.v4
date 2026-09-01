@@ -39,14 +39,19 @@ spec:
                 - -m
                 - runner.run_check
                 - --tytul=Stratne zamówienia — raport dzienny
+# ── CODZIENNIE: pojedyncze zamowienia wymagajace reakcji ──
                 - --check=stratne-wg-planu
                 - --check=stratne-daily
-                - --check=stratne-wzorce
-                - --check=stratne-przyczyny
                 - --check=mirror-health
                 - --check=amazon-raporty-pokrycie
                 - --check=amazon-negatywy-cisza
+                # ── TYGODNIOWO (poniedzialek, guard w SQL) ──
+                - --check=stratne-zastepcze
                 - --check=stratne-kierunki
+                - --check=stratne-wzorce
+                - --check=stratne-przyczyny
+                # ── MIESIECZNIE (1. dnia, guard w SQL) ──
+                - --check=stratne-struktura
                 - --send=U03787T2DTR          # DM Wojtka
               resources:
                 limits:

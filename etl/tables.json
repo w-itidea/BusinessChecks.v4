@@ -284,6 +284,26 @@
       "_po_co": "Sklad zestawow: BundleId -> Ean (po 2 na zestaw). Potrzebne, zeby sparowac zestaw ze sprzedaza: zamowienie liczy sie jako 'kupione przez zestaw' dopiero gdy zawiera OBA EAN-y.",
       "_dlaczego_pelny_reload": "1416 wierszy i BRAK kolumny czasu (Id, BundleId, Ean, Quantity, AllowIncrease) - nie ma z czego zrobic watermarku. Pelne przeladowanie, load = 0 zl.",
       "exclude": []
+    },
+    {
+      "target": "selly_ApiProducts",
+      "db": "azymut",
+      "schema": "selly",
+      "table": "ApiProducts",
+      "charset": "UTF-8",
+      "_uwaga_charset": "Name to nvarchar z polskimi znakami — pod CP1250 ucina sie po cichu (patrz azymut_Dzial).",
+      "watermark": null,
+      "pelny_reload": true,
+      "partition_by": null,
+      "cluster_by": [
+        "Ean"
+      ],
+      "_po_co": "Cena katalogowa sklepu Slowianin (EUR) per EAN. Potrzebna do wykrycia zakupu przez ZESTAW: rabat 10% nie zapisuje sie w zadnej kolumnie rabatowej (DiscountAmount* i UnitPriceExclTax sa zerowe dla SN), zostaje wylacznie jako obnizona UnitSalesPriceNet. Stosunek do ceny katalogowej znormalizowany mediana dnia daje Rel ~0.90 = rabat zestawowy.",
+      "_dlaczego_pelny_reload": "238 tys. wierszy, load = 0 zl. To biezaca oferta sklepu — MERGE nie usuwa wierszy, wiec produkt zdjety ze sklepu wisialby w mirrorze bez konca.",
+      "exclude": [
+        "RawJson"
+      ],
+      "_exclude_why": "RawJson to pelny payload z API Selly — ogromny, nieuzywany w analizie."
     }
   ]
 }

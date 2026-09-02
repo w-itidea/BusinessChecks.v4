@@ -73,6 +73,7 @@ spec:
                 - --table=azymut_Dzial
                 - --table=selly_BundleDefinitions
                 - --table=selly_BundleComponents
+                - --table=selly_ApiProducts
               resources:
                 limits:
                   cpu: "2"

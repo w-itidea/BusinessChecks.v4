@@ -1,4 +1,11 @@
 # Build obrazu ETL i wypchniecie do Artifact Registry.
+#
+# 🔴 NOWY CHECK TRAFIA DO CHMURY DOPIERO PO TEJ PRZEBUDOWIE.
+# Dockerfile robi `COPY sql/ /app/sql/` — pliki checkow sa WYPIEKANE W OBRAZIE.
+# Samo `gcloud run jobs replace runner/job.yaml` doda nazwe checku do argumentow, ale
+# pliku w obrazie nie bedzie i caly przebieg padnie na `nie znalazlem checku ...` (exit 1,
+# zero wiadomosci na Slacku). Kolejnosc jest wiec zawsze: NAJPIERW ten build, POTEM replace.
+# Przejechalem sie na tym 2026-09-01.
 #   gcloud builds submit --config=cloudbuild.yaml --project=erp-production-438714 .
 steps:
   - name: gcr.io/cloud-builders/docker

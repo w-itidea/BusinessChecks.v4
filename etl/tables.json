@@ -304,6 +304,60 @@
         "RawJson"
       ],
       "_exclude_why": "RawJson to pelny payload z API Selly — ogromny, nieuzywany w analizie."
+    },
+    {
+      "target": "azymut_ShipmentMethodPrice",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "ShipmentMethodPrice",
+      "watermark": null,
+      "pelny_reload": true,
+      "partition_by": null,
+      "cluster_by": [
+        "ShipmentMethodId",
+        "AllowedRegion"
+      ],
+      "_po_co": "Cennik kontraktowy przewoznikow: stawka per metoda x region x prog wagi (PerShipmentCostEUR + PerKilogramCostEUR) plus doplaty strefowe (IslandSurcharge*). Bez tego z chmury nie da sie policzyc, ile przesylka KOSZTUJE — sam fShippingCostTotal mowi ile zaplacilismy, ale nie z czego to wynika i nie pozwala policzyc kontrfaktyku 'a ile by bylo inna metoda'. Pelny reload, bo tabela nie ma kolumny LastUpdated, a wiersze bywaja zmieniane w miejscu (fIsActive, ValidUntill) — watermark po CreatedOnUtc przegapilby wygaszenie starego cennika.",
+      "exclude": []
+    },
+    {
+      "target": "azymut_ShipmentMethod",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "ShipmentMethod",
+      "watermark": null,
+      "partition_by": null,
+      "cluster_by": [
+        "ShipmentMethodId"
+      ],
+      "_po_co": "Slownik metod wysylki (nazwa, ShippingApiId, ShippingCompanyId, Active, VolumetricWeightRatio). Bez niego azymut_ShipmentMethodPrice ma same ID i nie da sie powiedziec, czyj to cennik ani czy metoda liczy wolumetryke.",
+      "exclude": []
+    },
+    {
+      "target": "azymut_produkty_generic_ceneo",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "produkty_generic_ceneo",
+      "watermark": "LastUpdateUtc",
+      "partition_by": null,
+      "cluster_by": [
+        "ean",
+        "SupplierId"
+      ],
+      "_po_co": "Feed Ceneo per dostawca: nazwa, autor, wydawnictwo, ISBN i EAN widziane u zrodla. Sluzy do odnajdywania produktow, ktorych nie ma w naszym katalogu (sieroty z WMS) oraz do wykrywania tego samego tytulu pod innym kodem.",
+      "exclude": [
+        "desc",
+        "spis_tresci",
+        "fIsbnClear",
+        "url",
+        "img"
+      ],
+      "_dlaczego_exclude": "Cztery kolumny po 8000 znakow i url 4000 to wiekszosc objetosci tabeli, a do dopasowywania produktow nie wnosza nic. Ten sam blad kosztowal nas 11,46 GB na ofi_PriceOffer.Reason.",
+      "charset": "UTF-8",
+      "_dlaczego_charset": "Cala tabela jest w NVARCHAR (nazwy, autorzy, wydawnictwa - takze obcojezyczne). Pod domyslnym CP1250 FreeTDS oddaje bajty nie do zdekodowania ('charmap' 0x81) - tak samo jak azymut_BookstoreProduct.",
+      "chunk_by": "Id",
+      "chunk_size": 100000,
+      "_dlaczego_chunk": "6,2 mln szerokich wierszy: pymssql buforuje caly wynik po stronie klienta i proces dostaje OOM (zabity po 1 mln). Okna po Id trzymaja w pamieci tylko jedna porcje."
     }
   ]
 }

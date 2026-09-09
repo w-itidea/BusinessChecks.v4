@@ -210,14 +210,43 @@ def pull(conn, cfg: dict, kolumny: list[dict], watermark: str | None, out_dir: P
     if watermark:
         where = f"WHERE [{cfg['watermark']}] >= %s"
         params = (watermark,)
-    sql = f"SELECT {cols} FROM [{cfg['db']}].[{cfg['schema']}].[{cfg['table']}] WITH (NOLOCK) {where}"
+    zrodlo = f"[{cfg['db']}].[{cfg['schema']}].[{cfg['table']}]"
+    sql = f"SELECT {cols} FROM {zrodlo} WITH (NOLOCK) {where}"
 
-    cur = conn.cursor(as_dict=True)
-    cur.execute(sql, params)
+    # pymssql buforuje CALY wynik po stronie klienta, wiec przy szerokiej tabeli na kilka
+    # milionow wierszy proces dostaje OOM zanim zdazy cokolwiek zapisac (produkty_generic_ceneo:
+    # zabity po 1 z 6,2 mln). "chunk_by" tnie zrodlowy SELECT na okna po kluczu calkowitym,
+    # dzieki czemu w pamieci siedzi naraz tylko jedno okno. Domyslnie wylaczone - tabele,
+    # ktore dzialaja, maja chodzic dokladnie tak jak dotad.
+    chunk_col = cfg.get("chunk_by")
+    okna: list[tuple] = [(sql, params)]
+    if chunk_col:
+        rozmiar = int(cfg.get("chunk_size") or 500_000)
+        c = conn.cursor()
+        c.execute(f"SELECT MIN([{chunk_col}]), MAX([{chunk_col}]) FROM {zrodlo} WITH (NOLOCK)")
+        lo, hi = c.fetchone()
+        if lo is None:
+            okna = []
+        else:
+            okna = []
+            spojnik = "AND" if where else "WHERE"
+            start = lo
+            while start <= hi:
+                koniec = start + rozmiar - 1
+                okna.append((
+                    f"{sql} {spojnik} [{chunk_col}] BETWEEN %s AND %s",
+                    (*params, start, koniec),
+                ))
+                start = koniec + 1
+            log(f"    chunk_by {chunk_col}: {len(okna)} okien po {rozmiar:,} ({lo}..{hi})")
+
     n = 0
     parts: list[Path] = []
     fh = None
     try:
+      for okno_sql, okno_params in okna:
+        cur = conn.cursor(as_dict=True)
+        cur.execute(okno_sql, okno_params)
         while True:
             rows = cur.fetchmany(BATCH)
             if not rows:
@@ -234,6 +263,7 @@ def pull(conn, cfg: dict, kolumny: list[dict], watermark: str | None, out_dir: P
                     fh = None
             if n % 200_000 == 0:
                 log(f"    pobrano {n:,} wierszy...")
+        cur.close()          # zwalnia bufor okna, zanim wejdziemy w kolejne
     finally:
         if fh is not None:
             fh.close()

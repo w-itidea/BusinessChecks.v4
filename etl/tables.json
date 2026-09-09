@@ -358,6 +358,21 @@
       "chunk_by": "Id",
       "chunk_size": 100000,
       "_dlaczego_chunk": "6,2 mln szerokich wierszy: pymssql buforuje caly wynik po stronie klienta i proces dostaje OOM (zabity po 1 mln). Okna po Id trzymaja w pamieci tylko jedna porcje."
+    },
+    {
+      "target": "azymut_BookstoreProductReplacement",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "BookstoreProductReplacement",
+      "watermark": "CreatedOnUtc",
+      "partition_by": null,
+      "cluster_by": [
+        "EAN",
+        "ReplacementEAN"
+      ],
+      "charset": "UTF-8",
+      "_po_co": "Pary zamiennikow (Type 0 = ten sam produkt, 1 = inne wydanie). Bez niej nie da sie w BQ odpowiedziec, ktore duplikaty kartotek NIE maja jeszcze wpisanej pary — a wlasnie one rozjezdzaja stany magazynowe.",
+      "exclude": []
     }
   ]
 }

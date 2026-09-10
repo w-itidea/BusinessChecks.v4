@@ -373,6 +373,78 @@
       "charset": "UTF-8",
       "_po_co": "Pary zamiennikow (Type 0 = ten sam produkt, 1 = inne wydanie). Bez niej nie da sie w BQ odpowiedziec, ktore duplikaty kartotek NIE maja jeszcze wpisanej pary — a wlasnie one rozjezdzaja stany magazynowe.",
       "exclude": []
+    },
+    {
+      "target": "spl_vMiZ_ProductData",
+      "db": "azymut",
+      "schema": "spl",
+      "table": "vMiZ_ProductData",
+      "watermark": null,
+      "partition_by": null,
+      "cluster_by": [
+        "EAN"
+      ],
+      "charset": "UTF-8",
+      "exclude": [],
+      "_po_co": "Katalog MiZ (parsowany XML z spl.SupplierProductXML): Brand, Index, InternalCode (=Symbol towaru z arkuszy), EAN, Stock, NetPrice. PILNE: u MiZ awaria systemu, nasza kopia moze byc jedyna."
+    },
+    {
+      "target": "azymut_produkty_azymut",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "produkty_azymut",
+      "watermark": null,
+      "partition_by": null,
+      "cluster_by": [
+        "kod_paskowy",
+        "isbn"
+      ],
+      "charset": "UTF-8",
+      "exclude": [],
+      "_po_co": "Katalog Azymutu — 71 kolumn opisowych, najbogatszy opis ksiazek jaki mamy od dostawcy.",
+      "_uwaga_klaster": "Klaster po kod_paskowy/isbn, bo kolumny 'ean' te tabele nie maja — CLUSTER BY po nieistniejacej kolumnie wywala CREATE TABLE."
+    },
+    {
+      "target": "azymut_produkty_platon",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "produkty_platon",
+      "watermark": null,
+      "partition_by": null,
+      "cluster_by": [
+        "kod_paskowy",
+        "isbn"
+      ],
+      "charset": "UTF-8",
+      "exclude": [],
+      "_po_co": "Katalog Platona (67 kolumn).",
+      "_uwaga_klaster": "Klaster po kod_paskowy/isbn, bo kolumny 'ean' te tabele nie maja — CLUSTER BY po nieistniejacej kolumnie wywala CREATE TABLE."
+    },
+    {
+      "target": "spl_mvZnak2_ProductData",
+      "db": "azymut",
+      "schema": "spl",
+      "table": "mvZnak2_ProductData",
+      "watermark": null,
+      "partition_by": null,
+      "cluster_by": [],
+      "charset": "UTF-8",
+      "exclude": [],
+      "_po_co": "Nowy Znak (Znak2) — 160 tys. pozycji."
+    },
+    {
+      "target": "azymut_SupplierEanCorrection",
+      "db": "azymut",
+      "schema": "dbo",
+      "table": "SupplierEanCorrection",
+      "watermark": "CreatedOnUtc",
+      "partition_by": null,
+      "cluster_by": [
+        "NaszEan"
+      ],
+      "charset": "UTF-8",
+      "exclude": [],
+      "_po_co": "Kanoniczna mapa 'kod u dostawcy -> nasz EAN'. 8 900 korekt MiZ, 2 667 oczytani, 143 dedalus. Bez niej mapowanie oferty non-book spada z 70,6% do 33,5%."
     }
   ]
 }

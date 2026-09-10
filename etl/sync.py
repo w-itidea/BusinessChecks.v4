@@ -115,12 +115,14 @@ def describe(conn, schema: str, table: str, exclude: list[str]) -> tuple[list[di
     cur = conn.cursor(as_dict=True)
     cur.execute(
         """
+        -- sys.objects, NIE sys.tables: inaczej WIDOKI zwracaja zero kolumn i BQ odbija
+        -- ladowanie bledem "A table must define at least one column" (spl.vMiZ_ProductData).
         SELECT c.name AS nazwa, t.name AS typ, c.column_id AS nr
-        FROM sys.tables tb
+        FROM sys.objects tb
         JOIN sys.schemas s  ON tb.schema_id = s.schema_id
         JOIN sys.columns c  ON tb.object_id = c.object_id
         JOIN sys.types t    ON c.user_type_id = t.user_type_id
-        WHERE s.name = %s AND tb.name = %s
+        WHERE s.name = %s AND tb.name = %s AND tb.type IN ('U','V')
         ORDER BY c.column_id
         """,
         (schema, table),

@@ -348,11 +348,9 @@
       "exclude": [
         "desc",
         "spis_tresci",
-        "fIsbnClear",
-        "url",
-        "img"
+        "fIsbnClear"
       ],
-      "_dlaczego_exclude": "Cztery kolumny po 8000 znakow i url 4000 to wiekszosc objetosci tabeli, a do dopasowywania produktow nie wnosza nic. Ten sam blad kosztowal nas 11,46 GB na ofi_PriceOffer.Reason.",
+      "_dlaczego_exclude": "Wykluczamy tylko trzy kolumny po 8000 znakow. img i url WROCILY: img to gotowy URL zdjecia (jedyne szybkie zrodlo obrazkow dla panelu), a url niesie ISBN i productID dostawcy — u czterech dostawcow jest JEDYNYM identyfikatorem (selkar: 737 813 z 738 586 pozycji bez EAN).",
       "charset": "UTF-8",
       "_dlaczego_charset": "Cala tabela jest w NVARCHAR (nazwy, autorzy, wydawnictwa - takze obcojezyczne). Pod domyslnym CP1250 FreeTDS oddaje bajty nie do zdekodowania ('charmap' 0x81) - tak samo jak azymut_BookstoreProduct.",
       "chunk_by": "Id",
@@ -445,6 +443,22 @@
       "charset": "UTF-8",
       "exclude": [],
       "_po_co": "Kanoniczna mapa 'kod u dostawcy -> nasz EAN'. 8 900 korekt MiZ, 2 667 oczytani, 143 dedalus. Bez niej mapowanie oferty non-book spada z 70,6% do 33,5%."
+    },
+    {
+      "target": "spl_mvLiber_ProductData",
+      "db": "azymut",
+      "schema": "spl",
+      "table": "mvLiber_ProductData",
+      "watermark": null,
+      "partition_by": null,
+      "cluster_by": [
+        "EAN"
+      ],
+      "charset": "UTF-8",
+      "exclude": [],
+      "chunk_by": "ProductXmlId",
+      "chunk_size": 200000,
+      "_po_co": "Katalog Liber sparsowany z XML (1,68 mln). Ma KOMPLET danych logistycznych: Weight, Height, Width, Thickness — czego nie ma zaden inny dostawca. Plus Title, Author, Publisher, Series, Category, Cover, Sites."
     }
   ]
 }

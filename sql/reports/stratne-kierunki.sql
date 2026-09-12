@@ -19,7 +19,6 @@
 
 DECLARE dni           INT64 DEFAULT 90;
 DECLARE min_zamowien  INT64 DEFAULT 20;   -- ponizej tego jeden pech wyglada jak trend
-DECLARE dzien_raportu INT64 DEFAULT 2;    -- 1=niedziela ... 2=poniedzialek
 
 SELECT
   COALESCE(ShippingCountryIso2, '??')                              AS Kraj,
@@ -36,7 +35,6 @@ WHERE OrderCreatedOnUtc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL dni DAY)
   AND IsDoneCalculating
   -- Raz w tygodniu. Check jest w codziennym jobie, ale odzywa sie tylko w poniedzialek;
   -- w pozostale dni zwraca zero wierszy i @cisza-gdy-pusto usuwa go z wiadomosci.
-  AND EXTRACT(DAYOFWEEK FROM CURRENT_DATE()) = dzien_raportu
 GROUP BY Kraj
 HAVING Zamowien >= min_zamowien AND Wynik_PLN < 0
 ORDER BY Wynik_PLN;

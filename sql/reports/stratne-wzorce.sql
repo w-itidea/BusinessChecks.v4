@@ -10,7 +10,7 @@
 -- Odpowiada na pytanie "gdzie systematycznie krwawimy", a nie "co bylo najgorsze wczoraj"
 -- (od tego jest stratne-daily).
 
-DECLARE dni_wstecz INT64 DEFAULT 1;
+DECLARE dni_wstecz INT64 DEFAULT 8;
 
 WITH stratne AS (
   SELECT
@@ -25,8 +25,7 @@ WITH stratne AS (
       ELSE 'inne / zlozone'
     END AS przyczyna
   FROM `polish-bookstores-group.BIData.opi_OrderProfit`
-  WHERE EXTRACT(DAYOFWEEK FROM CURRENT_DATE()) = 2
-  AND OrderCreatedOnUtc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL dni_wstecz DAY)
+  WHERE OrderCreatedOnUtc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL dni_wstecz DAY)
     AND OrderStatusId <> 40
     AND IsDoneCalculating
     AND Profit_Actual < 0

@@ -199,12 +199,15 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="append", required=True,
                     help="nazwa checku; mozna podac wielokrotnie (jedna wiadomosc na Slacku)")
-    ap.add_argument("--send", help="channel_id lub user_id (DM)")
+    ap.add_argument("--send", action="append", default=[],
+                    help="channel_id lub user_id (DM); mozna podac wielokrotnie — ta sama "
+                         "wiadomosc idzie do kazdego adresata")
     ap.add_argument("--tytul", default="Raport dzienny", help="naglowek wiadomosci na Slacku")
     ap.add_argument("--dry-run", action="store_true", help="policz koszt skanu i zakoncz")
     a = ap.parse_args()
 
     czesci, gb_razem, bledy, pominiete = [], 0.0, [], []
+    niedostarczone: list[str] = []
     for nazwa in a.check:
         try:
             sql = znajdz_sql(nazwa).read_text(encoding="utf-8")
@@ -254,8 +257,16 @@ def main() -> int:
         # i nic nie znalazl — inaczej "brak wiadomosci" nie do odroznienia od "check padl".
         ciche = f"_bez uwag: {', '.join(pominiete)}_" if pominiete else ""
         stopka = f"_skan {gb_razem:.2f} GB (~{gb_razem * 5 / 1024 * 4:.3f} zł)_"
-        wyslij(a.send, "\n\n".join(x for x in [naglowek, *czesci, *bledy, ciche, stopka] if x))
-    return 1 if bledy else 0
+        tresc = "\n\n".join(x for x in [naglowek, *czesci, *bledy, ciche, stopka] if x)
+        # Niedostarczenie do JEDNEGO adresata nie moze skasowac raportu pozostalym.
+        # Kod wyjscia i tak bedzie niezerowy, zeby nieudana wysylka nie uchodzila za sukces.
+        for adresat in a.send:
+            try:
+                wyslij(adresat, tresc)
+            except Exception as e:
+                print(f"[slack] nie wyslano do {adresat}: {e}")
+                niedostarczone.append(adresat)
+    return 1 if bledy or niedostarczone else 0
 
 
 if __name__ == "__main__":

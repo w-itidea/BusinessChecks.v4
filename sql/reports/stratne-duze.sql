@@ -1,25 +1,31 @@
--- CHECK: zamowienia stratne z ostatniej doby (zastepuje ~/.claude/cron/stratne_slack.sh)
--- @opis Które zamówienia z ostatniej doby przyniosły stratę i dlaczego — z linkami do panelu.
+-- CHECK: BARDZO DUZE straty z ostatniej doby — codzienna lista do reakcji tego samego dnia.
+-- @opis Zamówienia, które wczoraj straciły naprawdę dużo. Krótka lista, każda pozycja warta reakcji.
+-- @cisza-gdy-pusto
 --
--- Zrodlo: BIData.opi_OrderProfit (mirror w BQ) — bez VPN, bez sqlcmd, bez modelu jezykowego.
--- Klasyfikacja przyczyny jest policzona, nie zgadnieta przez AI: te same progi za kazdym razem,
--- wiec wyniki z roznych dni sa porownywalne.
+-- ⏱ RYTM DZIENNY (decyzja Wojtka 2026-09-12): „codziennie masz wysylac tylko b. duze straty".
+-- Pelna analiza strat przeniesiona na poniedzialek (stratne-daily, okno 8 dni).
+-- Tutaj zostaje tylko to, co nie moze poczekac do poniedzialku.
 --
--- Filtry obowiazkowe: OrderStatusId <> 40 (anulowane), IsDoneCalculating = 1 (profit domkniety).
+-- 🔢 SKAD PROG -100 zl (zmierzone 2026-09-12, 30 dni, scratchpad/prog.sql):
+--     prog     zam./dzien   % calej straty
+--     -50        11,5           61,0%
+--     -75         5,9           41,6%
+--    -100         3,4           29,2%   <- wybrane
+--    -150         1,1           13,8%
+--    -200         0,6            9,0%
+-- Przy -100 dostajesz srednio TRZY zamowienia dziennie i lapiesz 29% calej kwoty strat.
+-- Nizszy prog (-50) to 11-12 pozycji dziennie — czyli znowu lista, ktora sie przewija
+-- bez czytania, a o to wlasnie byla pretensja. Wyzszy (-200) milczy przez wiekszosc dni.
+-- Reszta strat NIE ginie: ogon idzie do poniedzialkowego raportu.
+--
+-- Filtry obowiazkowe: OrderStatusId <> 40 (anulowane), IsDoneCalculating (profit domkniety).
 --
 -- @link Zamowienie https://panel.fkwt.pl/Order3.aspx?OrderId={}
--- ^ runner dokleja pod tabela klikalne linki do zamowien w panelu (poza code-blockiem,
---   bo w code-blocku linki Slacka sie nie klikaja). Kolumna Zamowienie = CustomerOrderId.
 
-DECLARE dni_wstecz     INT64   DEFAULT 8;
-DECLARE prog_straty    NUMERIC DEFAULT 0;    -- Profit_Actual ponizej tej wartosci = strata
-DECLARE prog_istotnosci NUMERIC DEFAULT -10; -- ponizej tego pokazujemy nawet bez zdiagnozowanej przyczyny
-DECLARE ile_pokazac    INT64   DEFAULT 15;
-
--- PROG ISTOTNOSCI — dobrany na probce tygodniowej (sql/diagnostic/stratne-inne-rozklad.sql):
--- w kuble "inne / zlozone" 139 z 201 zamowien tracilo < 5 zl, dajac tylko 29% straty kubla.
--- Lista bez progu tonie w szumie. Dlatego pokazujemy zamowienie, gdy MA zdiagnozowana
--- przyczyne (patologia — niezaleznie od kwoty) ALBO strata przekracza prog_istotnosci.
+DECLARE dni_wstecz      INT64   DEFAULT 1;
+DECLARE prog_straty     NUMERIC DEFAULT -100;  -- „b. duze straty" — patrz tabelka wyzej
+DECLARE prog_istotnosci NUMERIC DEFAULT -100;  -- rowny progowi: nie przepuszczamy drobnicy bez przyczyny
+DECLARE ile_pokazac     INT64   DEFAULT 15;
 
 SELECT * FROM (
 SELECT

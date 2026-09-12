@@ -30,7 +30,7 @@
 --
 -- @link Zamowienie https://panel.fkwt.pl/Order3.aspx?OrderId={}
 
-DECLARE dni_wstecz  INT64   DEFAULT 1;
+DECLARE dni_wstecz  INT64   DEFAULT 8;
 DECLARE tolerancja  NUMERIC DEFAULT 3.0;  -- zl; ponizej = wykonanie zgodne z planem
 DECLARE ile_pokazac INT64   DEFAULT 12;
 

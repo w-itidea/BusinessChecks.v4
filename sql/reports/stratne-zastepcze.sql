@@ -19,8 +19,7 @@
 -- Raport tygodniowy — w pozostale dni cisza.
 -- ⚠️ Profit_Actual, NIGDY Profit_ActualFull.
 
-DECLARE dni           INT64 DEFAULT 7;
-DECLARE dzien_raportu INT64 DEFAULT 2;   -- 1=niedziela, 2=poniedzialek
+DECLARE dni           INT64 DEFAULT 8;
 
 SELECT
   IdBookstore                                 AS Rynek,
@@ -36,7 +35,6 @@ WHERE OrderCreatedOnUtc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL dni DAY)
   AND IsDoneCalculating
   AND Profit_Actual < 0
   AND fOrderTotal <= 0                        -- pelny koszt, zero przychodu
-  AND EXTRACT(DAYOFWEEK FROM CURRENT_DATE()) = dzien_raportu
 GROUP BY Rynek, Kraj
 HAVING Wysylek >= 2
 ORDER BY Koszt_PLN;

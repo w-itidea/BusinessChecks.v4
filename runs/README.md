@@ -48,3 +48,5 @@ Sekcje (pomiń te, które nie mają treści — pusty nagłówek jest gorszy ni�
 | 2026-07-21 | [Rozjazd wyceny wysyłki — ~44 tys. zł/mies.](2026-07-21-rozjazd-wyceny-wysylki.md) | ⏳ czeka na odpowiedź Artura |
 | 2026-07-21 | [Test sale EU — Buy Box wrócił, sprzedaż nie](2026-07-21-sale-test-eu.md) | ✅ zamknięte, decyzja podjęta |
 | 2026-07-21 | [Przyczyny strat wg tagów systemowych](2026-07-21-przyczyny-strat.md) | 🔵 do działania |
+| 2026-09-03 | [Tag 35 Libri a strata — korelacja została, pieniądze zniknęły](2026-09-03-libri-tag35.md) | ✅ zamknięte, decyzja podjęta |
+| 2026-09-03 | [Upgrade wysyłki (tag 38) — 3,5 tys. zł/mies. za 9× mniej spóźnionych dostaw](2026-09-03-upgrade-wysylki-tag38.md) | ✅ zamknięte; teza „wina dostawcy" obalona |

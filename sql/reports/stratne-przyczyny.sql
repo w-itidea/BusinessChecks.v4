@@ -15,7 +15,9 @@
 --   24 = wymiary produktu zgadywane (!) — wycena wysylki na zmyslonych wymiarach
 --   33 = towar kupiony >365 dni przed sprzedaza (zalegacz)
 --   34 = DispatchDate juz przekroczony
---   35 = WarehouseRequest do konkretnego dostawcy
+--   35 = WarehouseRequest do konkretnego dostawcy — UWAGA: w praktyce tag dostaje
+--        WYLACZNIE Libri (jedyny wariant Note w calym mirrorze), wiec to nie jest
+--        ranking dostawcow. Base-rate: runs/2026-09-03-libri-tag35.md
 --   40 = stock z awaryjnego przyjecia (SupplierOrder bez faktury -> koszt nieznany przy wycenie)
 --   43 = wymuszona zmiana metody wysylki (np. Prime->Paket, dwukrotnosc wyceny)
 --

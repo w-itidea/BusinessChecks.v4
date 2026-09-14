@@ -4,7 +4,8 @@
 --
 -- ⏱ RYTM TYGODNIOWY (decyzja Wojtka 2026-09-01): agregat to WZORZEC, a wzorzec
 -- nie zmienia sie z dnia na dzien. Codzienne powtarzanie tej samej tabeli uczy ja
--- pomijac. Guard na dzien tygodnia jest w WHERE; poza poniedzialkiem check milczy.
+-- pomijac. Rytm ustala harmonogram (businesschecks-weekly, wtorek) — w SQL nie ma juz
+-- guardu dnia tygodnia, zeby reczne powtorzenie nieudanego przebiegu nie zwracalo PUSTO.
 --
 -- To jest sekcja "Wzorce" ze starego digestu, policzona zamiast opisana przez model.
 -- Odpowiada na pytanie "gdzie systematycznie krwawimy", a nie "co bylo najgorsze wczoraj"

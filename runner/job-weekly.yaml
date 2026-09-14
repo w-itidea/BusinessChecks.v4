@@ -1,8 +1,8 @@
-# Cloud Run Job: PONIEDZIALKOWA analiza strat -> Slack, do Wojtka i Artura.
+# Cloud Run Job: WTORKOWA analiza strat -> Slack, do Wojtka i Artura.
 #
 # Po co osobno od businesschecks-daily (decyzja Wojtka 2026-09-12):
-# „analiza strat ktore teraz wysylasz codziennie teraz chcemy 1 raz w tygodniu w pn —
-#  ma 8 dni do tylu — do mnie i do Artura".
+# „analiza strat ktore teraz wysylasz codziennie teraz chcemy 1 raz w tygodniu (...)
+#  ma 8 dni do tylu — do mnie i do Artura". Dzien przesuniety na WTOREK (2026-09-14).
 # Adresat jest inny niz w raporcie dziennym, a --send dziala na caly przebieg, nie na
 # pojedynczy check — wiec innego adresata nie da sie uzyskac inaczej niz osobnym jobem.
 #
@@ -10,8 +10,8 @@
 # przebieg robi dziure w pokryciu, ktorej nikt nie zobaczy. Jeden dzien zakladki znaczy,
 # ze cos najwyzej pojawi sie dwa razy, zamiast zniknac.
 #
-# ⚠️ Guardy „tylko w poniedzialek" USUNIETE z tych checkow. Rytm siedzi teraz w harmonogramie,
-# w jednym miejscu. Gdyby zostal takze w SQL, reczne powtorzenie nieudanego przebiegu we wtorek
+# ⚠️ Guardy dnia tygodnia USUNIETE z tych checkow. Rytm siedzi teraz w harmonogramie,
+# w jednym miejscu. Gdyby zostal takze w SQL, reczne powtorzenie nieudanego przebiegu nazajutrz
 # zwrociloby PUSTO — czyli falszywe „nie ma strat" zamiast raportu.
 #
 # Deploy:
@@ -19,16 +19,16 @@
 #
 # ⚠️ NOWY JOB NIE DZIEDZICZY prawa do odpalania. businesschecks@ ma run.invoker na
 # businesschecks-daily, ale nadanie jest PER JOB — bez ponizszego trigger wraca z kodem 7
-# (PERMISSION_DENIED) i w poniedzialek nic nie przychodzi, cicho:
+# (PERMISSION_DENIED) i we wtorek nic nie przychodzi, cicho:
 #   gcloud run jobs add-iam-policy-binding businesschecks-weekly \
 #     --region=europe-north1 --project=erp-production-438714 \
 #     --member=serviceAccount:businesschecks@erp-production-438714.iam.gserviceaccount.com \
 #     --role=roles/run.invoker
 #
-# Trigger (poniedzialek 8:05 czasu warszawskiego, dwie minuty po raporcie dziennym):
+# Trigger (wtorek 8:05 czasu warszawskiego, dwie minuty po raporcie dziennym):
 #   gcloud scheduler jobs create http businesschecks-weekly-trigger \
 #     --location=europe-central2 --project=erp-production-438714 \
-#     --schedule="5 8 * * 1" --time-zone="Europe/Warsaw" \
+#     --schedule="5 8 * * 2" --time-zone="Europe/Warsaw" \
 #     --uri="https://europe-north1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/erp-production-438714/jobs/businesschecks-weekly:run" \
 #     --http-method=POST \
 #     --oauth-service-account-email=businesschecks@erp-production-438714.iam.gserviceaccount.com

@@ -3,8 +3,8 @@
 -- @cisza-gdy-pusto
 --
 -- ⏱ RYTM DZIENNY (decyzja Wojtka 2026-09-12): „codziennie masz wysylac tylko b. duze straty".
--- Pelna analiza strat przeniesiona na poniedzialek (stratne-daily, okno 8 dni).
--- Tutaj zostaje tylko to, co nie moze poczekac do poniedzialku.
+-- Pelna analiza strat przeniesiona na wtorek (stratne-daily, okno 8 dni).
+-- Tutaj zostaje tylko to, co nie moze poczekac do wtorku.
 --
 -- 🔢 SKAD PROG -100 zl (zmierzone 2026-09-12, 30 dni, scratchpad/prog.sql):
 --     prog     zam./dzien   % calej straty
@@ -16,7 +16,7 @@
 -- Przy -100 dostajesz srednio TRZY zamowienia dziennie i lapiesz 29% calej kwoty strat.
 -- Nizszy prog (-50) to 11-12 pozycji dziennie — czyli znowu lista, ktora sie przewija
 -- bez czytania, a o to wlasnie byla pretensja. Wyzszy (-200) milczy przez wiekszosc dni.
--- Reszta strat NIE ginie: ogon idzie do poniedzialkowego raportu.
+-- Reszta strat NIE ginie: ogon idzie do raportu tygodniowego.
 --
 -- Filtry obowiazkowe: OrderStatusId <> 40 (anulowane), IsDoneCalculating (profit domkniety).
 --

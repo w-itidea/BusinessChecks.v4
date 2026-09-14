@@ -33,8 +33,7 @@ FROM `polish-bookstores-group.BIData.opi_OrderProfit`
 WHERE OrderCreatedOnUtc >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL dni DAY)
   AND OrderStatusId <> 40
   AND IsDoneCalculating
-  -- Raz w tygodniu. Check jest w codziennym jobie, ale odzywa sie tylko w poniedzialek;
-  -- w pozostale dni zwraca zero wierszy i @cisza-gdy-pusto usuwa go z wiadomosci.
+  -- Raz w tygodniu — rytm ustala harmonogram (businesschecks-weekly, wtorek);
 GROUP BY Kraj
 HAVING Zamowien >= min_zamowien AND Wynik_PLN < 0
 ORDER BY Wynik_PLN;

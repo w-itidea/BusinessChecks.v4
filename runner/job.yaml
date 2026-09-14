@@ -41,7 +41,7 @@ spec:
                 - --tytul=Raport dzienny — duże straty i zdrowie danych
                 # ── CODZIENNIE: tylko to, na co trzeba zareagowac TEGO DNIA ──
                 # Decyzja Wojtka 2026-09-12: „codziennie masz wysylac tylko b. duze straty".
-                # Pelna analiza strat przeniesiona do businesschecks-weekly (poniedzialek, okno 8 dni,
+                # Pelna analiza strat przeniesiona do businesschecks-weekly (wtorek, okno 8 dni,
                 # do Wojtka i Artura). Tutaj zostaje pojedyncza lista duzych strat plus zdrowie danych —
                 # bo o zepsutym mirrorze albo o przestaniu splywac raportow Amazona trzeba wiedziec od razu.
                 - --check=stratne-duze
@@ -49,7 +49,7 @@ spec:
                 - --check=amazon-raporty-pokrycie
                 - --check=amazon-negatywy-cisza
                 # ── MIESIECZNIE (1. dnia, guard w SQL) ──
-                # Guard zostaje, bo 1. dzien miesiaca rzadko wypada w poniedzialek —
+                # Guard zostaje, bo 1. dzien miesiaca rzadko wypada we wtorek —
                 # przeniesienie tego do joba tygodniowego uciszyloby check na 11 miesiecy w roku.
                 - --check=stratne-struktura
                 - --send=U03787T2DTR          # DM Wojtka

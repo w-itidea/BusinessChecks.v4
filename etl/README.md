@@ -22,6 +22,10 @@ np. scrapując własne wiadomości ze Slacka.
 | `ofi_PriceOffer` | `BIData.ofi.PriceOffer` | `Id` | `LastUpdatedOnUtc` |
 | `ofi_AmazonFeedProductSettings` | `BIData.ofi.AmazonFeedProductSettings` | `Id` | `LastModifiedOnUtc` |
 | `azymut_BookstoreProductPA` | `azymut.dbo.BookstoreProductPA` | `EAN` | `LastModifiedOnUtc` |
+| `azymut_ShipmentMethodPrice` | `azymut.dbo.ShipmentMethodPrice` | `Id` | — (pełny reload) |
+| `azymut_ShipmentMethod` | `azymut.dbo.ShipmentMethod` | `ShipmentMethodId` | — (pełny reload) |
+
+> ⚠️ Ta tabelka bywa niekompletna — źródłem prawdy jest `tables.json` (19 tabel na 2026-09-08).
 
 Kolumny i klucz główny są **wykrywane z katalogu źródła** przy każdym przebiegu — dodanie kolumny
 w SQL Serverze nie wymaga zmiany kodu. Konfiguracja (`tables.json`) trzyma tylko to, czego nie da
@@ -155,3 +159,28 @@ To ~2% obecnego rachunku za BigQuery; świadomie nie optymalizowane dalej.
 
 Bezpieczniki: `MAX_SCAN_GB` (domyślnie 20 GB) przerywa przebieg zamiast zapłacić, a każde zapytanie
 idzie najpierw jako `--dry_run`.
+
+---
+
+## ⚠️ Edukacja błędów — czytaj PRZED zmianą w ETL
+
+Wszystkie poniższe wpadki mają **jeden wspólny mianownik: ETL milczy, kiedy czegoś nie robi.**
+Job kończy się `exit(0)`, trigger jest `ENABLED`, podsumowanie wygląda dobrze — a tabela stoi
+tygodniami. **Brak sygnału nie jest dowodem sukcesu.** Dlatego każda zmiana kończy się
+sprawdzeniem `MAX(<kolumna czasu>)` w BQ **i** w źródle, nie odczytem statusu joba.
+
+| # | Co się stało | Skutek | Jak wykryte | Lekcja |
+|---|---|---|---|---|
+| 1 | Tabela dodana do `tables.json`, ale **nie do `job.yaml`** (`azymut_produkty_azymut`, `_platon`, commit `96860a0` z 10.09.2026) | mirror katalogów stał **16 dni**, a warstwa PIM liczyła na danych z 10.09 | przypadkiem, przy budowie `pim_stage` — widok świeżości pokazał `PRZESTARZALE` | `tables.json` to **rejestr**, nie harmonogram. Dodanie tabeli = dwa miejsca. |
+| 2 | Tabela z PK ale **bez `watermark`** wpadała w `get_watermark()`, który wstawiał do SQL-a literalne `None` → `Unrecognized name: None at [1:64]` | te tabele dawały się zsynchronizować **tylko raz** (gdy jeszcze nie istniały w BQ); każda kolejna próba cicho padała | ręczne uruchomienie syncu po wpadce #1 | tryb „pełny reload" musi być wybierany **zanim** policzymy watermark, nie po |
+| 3 | `containerOverrides.args` bez `-m, etl.sync` | `ofi_PriceOffer` stał w mirrorze od **21.07.2026**, mimo `ENABLED` triggera | ręczne porównanie z bazą | `args` **zastępują całe** args z `job.yaml`; ENTRYPOINT obrazu to `python3` |
+| 4 | Kolumny `img` i `url` wykluczone z mirrora Ceneo jako „duże i zbędne" | pół roku później okazały się **jedynym** źródłem URL-i zdjęć u dostawców | przy budowie panelu PIM | wykluczenie kolumny to decyzja produktowa, nie oszczędność — zapisz **po co** ją wykluczasz |
+| 5 | `describe()` pytał `sys.tables` | dla **widoku** zwracał zero kolumn → BQ odbijał „A table must define at least one column" | na `spl.vMiZ_ProductData` | widok to też obiekt: `sys.objects` z `type IN ('U','V')` |
+| 6 | Klaster po kolumnie, której w tabeli nie ma (`ean` w `produkty_azymut`) | load odbijany przez BQ | przy pierwszym syncu | nazwy kolumn sprawdzaj w katalogu źródła, nie zakładaj konwencji |
+
+### Co by to wyłapało systemowo
+
+Check „wiek danych per tabela z `tables.json`": dla każdej pozycji porównać `MAX(watermark)`
+(albo `MAX` dowolnej kolumny czasu) w BQ z progiem wynikającym z harmonogramu. Wpadki **1, 2, 3**
+są tej samej klasy — wszystkie objawiają się wyłącznie jako *stara data*, więc jeden check
+zamyka trzy dziury. Bez niego wykrywalność zależy od tego, czy ktoś przypadkiem spojrzy.

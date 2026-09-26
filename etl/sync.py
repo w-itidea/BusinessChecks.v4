@@ -449,7 +449,16 @@ def sync_table(cfg: dict, conf: dict, dry: bool) -> dict:
         if swieza and not dry:
             create_table(cfg, conf, kolumny)
 
-        wm = None if (swieza or pelny) else get_watermark(cfg, conf)
+        # ⚠️ Tabela z PK ale BEZ zdefiniowanego watermarku (katalogi produktow: produkty_azymut,
+        # produkty_platon) nie ma po czym liczyc delty — musi lecieć pelnym przeladowaniem.
+        # Bez tego warunku get_watermark() wstawialo do SQL-a literalne "None" i sync padal na
+        # "Unrecognized name: None at [1:64]". Tabele przechodzily TYLKO przy pierwszym loadzie
+        # (gdy jeszcze nie istnialy w BQ), a kazda kolejna proba cicho konczyla sie bledem —
+        # dlatego mirror produktow stal od 2026-09-10 do 2026-09-26.
+        bez_watermarku = not cfg.get("watermark")
+        if bez_watermarku and not swieza and not pelny:
+            log("  brak zdefiniowanego watermarku -> pelne przeladowanie (--replace)")
+        wm = None if (swieza or pelny or bez_watermarku) else get_watermark(cfg, conf)
         log(f"  watermark: {wm or 'BRAK -> pelny load poczatkowy'}")
         if dry:
             return {"target": cfg["target"], "wierszy": None, "tryb": "dry-run"}

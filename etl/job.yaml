@@ -16,6 +16,20 @@
 #     --http-method=POST \
 #     --oauth-service-account-email=supplier-bots@erp-production-438714.iam.gserviceaccount.com
 #
+# ⚠️ KATALOGI PRODUKTOW IDA OSOBNYM TRIGGEREM, NIE W TYM CYKLU.
+# azymut_produkty_azymut (680 tys. wierszy, 71 kolumn) i azymut_produkty_platon (347 tys., 67)
+# nie maja watermarku, wiec kazdy przebieg to PELNE przeladowanie. W cyklu co 8h to ten sam
+# transfer trzy razy dziennie bez zadnego zysku — raz na dobe wystarcza. Trigger dzienny:
+#   gcloud scheduler jobs create http bidata-bq-sync-produkty \
+#     --location=europe-central2 --project=erp-production-438714 \
+#     --schedule="40 4 * * *" --time-zone="Europe/Warsaw" --attempt-deadline=180s \
+#     --uri="https://europe-north1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/erp-production-438714/jobs/bidata-bq-sync:run" \
+#     --http-method=POST \
+#     --oauth-service-account-email="businesschecks@erp-production-438714.iam.gserviceaccount.com" \
+#     --message-body='{"overrides":{"containerOverrides":[{"name":"etl","args":["-m","etl.sync","--table=azymut_produkty_azymut","--table=azymut_produkty_platon"]}]}}'
+# Bez tego triggera te tabele NIE SA odswiezane w ogole — wpisanie ich do tables.json nie
+# wystarcza (wpadka #1 w etl/README.md: mirror stal 16 dni).
+#
 # WYMAGA (do potwierdzenia przed deployem):
 #   * sekret z haslem readonly do SQL Server — nazwa ponizej to propozycja wg konwencji
 #     z ~/.claude/SECRETS.md; jesli nie istnieje, trzeba go zalozyc

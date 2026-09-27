@@ -28,7 +28,7 @@
 #     --uri="https://europe-north1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/erp-production-438714/jobs/bidata-bq-sync:run" \
 #     --http-method=POST \
 #     --oauth-service-account-email="businesschecks@erp-production-438714.iam.gserviceaccount.com" \
-#     --message-body='{"overrides":{"containerOverrides":[{"name":"etl","args":["-m","etl.sync","--table=azymut_produkty_azymut","--table=azymut_produkty_platon","--table=azymut_produkty_generic_ceneo","--table=spl_mvLiber_ProductData","--table=spl_mvZnak2_ProductData","--table=spl_vMiZ_ProductData"]}]}}'
+#     --message-body='{"overrides":{"containerOverrides":[{"name":"etl","args":["-m","etl.sync","--table=azymut_produkty_azymut","--table=azymut_produkty_platon","--table=azymut_produkty_generic_ceneo","--table=spl_mvLiber_ProductData","--table=spl_mvZnak2_ProductData","--table=spl_vMiZ_ProductData","--table=azymut_ShipmentMethodPrice"]}]}}'
 # Bez tego triggera te tabele NIE SA odswiezane w ogole — wpisanie ich do tables.json nie
 # wystarcza (wpadka #1 w etl/README.md: mirror stal 16 dni).
 #
@@ -93,8 +93,10 @@ spec:
                 # SupplierEanCorrection 17 dni, a ShipmentMethod* nie istnialy w BQ w ogole.
                 - --table=azymut_BookstoreProductReplacement
                 - --table=azymut_SupplierEanCorrection
-                - --table=azymut_ShipmentMethod
-                - --table=azymut_ShipmentMethodPrice
+                - --table=azymut_ShipmentMethod          # slownik metod, 228 wierszy
+                # ⚠️ azymut_ShipmentMethodPrice NIE TUTAJ — mimo nazwy "cennik" ma
+                # 2 889 606 wierszy (stawka per metoda x region x prog wagi) i nie ma watermarku,
+                # czyli kazdy przebieg to pelny reload. Idzie triggerem dziennym, razem z katalogami.
                 - --table=selly_BundleDefinitions
                 - --table=selly_BundleComponents
                 - --table=selly_ApiProducts

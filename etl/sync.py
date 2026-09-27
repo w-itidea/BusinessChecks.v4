@@ -487,6 +487,35 @@ def sync_table(cfg: dict, conf: dict, dry: bool) -> dict:
         conn.close()
 
 
+def zapisz_rejestr(conf: dict) -> None:
+    """
+    Wystawia `tables.json` do BigQuery jako `<dataset>.etl_rejestr`.
+
+    ⚠️ Po co: rejestr tabel i harmonogram to DWA rozne miejsca (`tables.json` vs `job.yaml`),
+    i nikt tego nie pilnowal. Stan 2026-09-27: rejestr mial 27 pozycji, job 13, a
+    `azymut_ShipmentMethod`/`ShipmentMethodPrice` nie istnialy w BQ w ogole. Dopisanie tabeli
+    do rejestru NIE znaczy, ze jest odswiezana — i tego z samego BigQuery nie da sie zobaczyc.
+    Z tym odwzorowaniem check `mirror-rejestr` porownuje "co powinno byc" z `__TABLES__`
+    i sam wykrywa brakujace oraz stojace tabele, bez drugiej listy do utrzymywania.
+
+    Leci przy KAZDYM przebiegu, takze z --table, bo rejestr opisuje caly stan, nie delte.
+    """
+    wiersze = []
+    for t in conf["tables"]:
+        cel = t["target"].replace("'", "")
+        zrodlo = f"{t.get('db','')}.{t.get('schema','')}.{t.get('table','')}".replace("'", "")
+        wm = t.get("watermark")
+        wm_sql = f"'{wm}'" if wm else "NULL"
+        prog = int(t.get("prog_wieku_dni", 2))
+        wiersze.append(f"STRUCT('{cel}' AS target, '{zrodlo}' AS zrodlo, {wm_sql} AS watermark, "
+                       f"{prog} AS prog_wieku_dni)")
+
+    sql = (f"CREATE OR REPLACE TABLE `{conf['project']}.{conf['dataset']}.etl_rejestr` AS "
+           f"SELECT *, CURRENT_TIMESTAMP() AS zapisano_utc FROM UNNEST([{', '.join(wiersze)}])")
+    bq_query(sql, conf["project"], conf["location"], f"etl_rejestr: {len(wiersze)} pozycji")
+    log(f"  rejestr tabel wystawiony do {conf['dataset']}.etl_rejestr ({len(wiersze)} pozycji)")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--table", action="append", help="nazwa targetu; mozna podac wielokrotnie")
@@ -502,6 +531,11 @@ def main() -> int:
     if not (os.environ.get("SQL_USER") and os.environ.get("SQL_PASS")):
         log("BLAD: brak SQL_USER / SQL_PASS w srodowisku")
         return 2
+
+    try:
+        zapisz_rejestr(conf)
+    except Exception as e:                           # rejestr to metadane — nie blokuje syncu
+        log(f"  ✗ etl_rejestr: {e}")
 
     wyniki, bledy = [], []
     for cfg in wybrane:

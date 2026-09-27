@@ -46,6 +46,11 @@ spec:
                 # bo o zepsutym mirrorze albo o przestaniu splywac raportow Amazona trzeba wiedziec od razu.
                 - --check=stratne-duze
                 - --check=mirror-health
+                # mirror-rejestr pyta o co INNEGO niz mirror-health: nie o wiek danych w dziesieciu
+                # wypisanych tabelach, ale o to, czy ETL dotknal KAZDEJ pozycji rejestru. Trzy razy
+                # zdarzylo sie, ze tabela stala tygodniami przy zielonym jobie — patrz etl/README.md,
+                # sekcja "Edukacja bledow". Check nie ma wlasnej listy tabel; czyta BIData.etl_rejestr.
+                - --check=mirror-rejestr
                 - --check=amazon-raporty-pokrycie
                 - --check=amazon-negatywy-cisza
                 # ── MIESIECZNIE (1. dnia, guard w SQL) ──

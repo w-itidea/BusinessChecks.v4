@@ -178,9 +178,33 @@ sprawdzeniem `MAX(<kolumna czasu>)` w BQ **i** w źródle, nie odczytem statusu 
 | 5 | `describe()` pytał `sys.tables` | dla **widoku** zwracał zero kolumn → BQ odbijał „A table must define at least one column" | na `spl.vMiZ_ProductData` | widok to też obiekt: `sys.objects` z `type IN ('U','V')` |
 | 6 | Klaster po kolumnie, której w tabeli nie ma (`ean` w `produkty_azymut`) | load odbijany przez BQ | przy pierwszym syncu | nazwy kolumn sprawdzaj w katalogu źródła, nie zakładaj konwencji |
 
-### Co by to wyłapało systemowo
+### Co to wyłapuje systemowo — check `mirror-rejestr` (dodany 2026-09-27)
 
-Check „wiek danych per tabela z `tables.json`": dla każdej pozycji porównać `MAX(watermark)`
-(albo `MAX` dowolnej kolumny czasu) w BQ z progiem wynikającym z harmonogramu. Wpadki **1, 2, 3**
-są tej samej klasy — wszystkie objawiają się wyłącznie jako *stara data*, więc jeden check
-zamyka trzy dziury. Bez niego wykrywalność zależy od tego, czy ktoś przypadkiem spojrzy.
+`sql/etl/mirror-rejestr.sql`, w harmonogramie dziennym obok `mirror-health`. Wpadki **1, 2 i 3**
+są tej samej klasy — objawiają się wyłącznie jako *stara data* — więc jeden check zamyka trzy dziury.
+
+**Nie ma własnej listy tabel** i to jest w nim najważniejsze: lista, którą trzeba pamiętać
+aktualizować, jest tym samym rodzajem dziury, którą tu zamykamy. Zamiast tego `etl/sync.py`
+wystawia `tables.json` do BigQuery jako `BIData.etl_rejestr` (funkcja `zapisz_rejestr`, leci przy
+każdym przebiegu, także z `--table`), a check porównuje rejestr z `__TABLES__` i zgłasza trzy rzeczy:
+
+| sygnał | znaczenie |
+|---|---|
+| ❌ **NIE ISTNIEJE w BQ** | tabela obiecana w rejestrze, nigdy nie zsynchronizowana |
+| ⚠️ **ZASTOJ** | jest, ale ETL nie dotknął jej dłużej niż `prog_wieku_dni` |
+| ℹ️ **poza rejestrem ETL** | tabela w mirrorze, której nie opisuje `tables.json` (inny kanał zasilania) |
+
+Próg per tabela: pole **`prog_wieku_dni`** w `tables.json` (brak = 2 dni, bo ETL chodzi co 8 h;
+`9999` = świadomie nie pilnujemy — baseline `fin_*` z zamrożonego w marcu 2026 źródła Optimy
+oraz `ofi_AmazonFeedProductSettings`, ruszana rzadko i ręcznie).
+
+**Pierwsze uruchomienie (2026-09-27) znalazło 8 problemów**, o których nikt nie wiedział:
+`azymut_ShipmentMethod` i `azymut_ShipmentMethodPrice` **nigdy nie trafiły do BQ**, a sześć tabel
+dodanych commitem `96860a0` stało 17–18 dni (`produkty_generic_ceneo` 6,2 mln wierszy,
+`spl_mvLiber_ProductData` 1,7 mln, `spl_mvZnak2_ProductData`, `spl_vMiZ_ProductData`,
+`azymut_BookstoreProductReplacement`, `azymut_SupplierEanCorrection`).
+
+⚠️ Rejestr ma **27 pozycji**, a `etl/job.yaml` **13** `--table`. Rozjazd jest normalny tylko wtedy,
+gdy jest **udokumentowany** — `fin_*` mają w `tables.json` adnotację `_uwaga_zrodlo` wyjaśniającą,
+czemu są poza jobem, `ofi_PriceOffer` ma własny trigger dzienny. Pozostałe pozycje takiego
+wyjaśnienia nie mają i to właśnie one stoją.

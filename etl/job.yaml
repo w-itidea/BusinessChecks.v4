@@ -17,16 +17,18 @@
 #     --oauth-service-account-email=supplier-bots@erp-production-438714.iam.gserviceaccount.com
 #
 # ⚠️ KATALOGI PRODUKTOW IDA OSOBNYM TRIGGEREM, NIE W TYM CYKLU.
-# azymut_produkty_azymut (680 tys. wierszy, 71 kolumn) i azymut_produkty_platon (347 tys., 67)
-# nie maja watermarku, wiec kazdy przebieg to PELNE przeladowanie. W cyklu co 8h to ten sam
-# transfer trzy razy dziennie bez zadnego zysku — raz na dobe wystarcza. Trigger dzienny:
+# azymut_produkty_azymut (680 tys. wierszy, 71 kolumn), azymut_produkty_platon (347 tys., 67),
+# spl_mvLiber_ProductData (1,7 mln), spl_mvZnak2_ProductData i spl_vMiZ_ProductData nie maja
+# watermarku, wiec kazdy przebieg to PELNE przeladowanie; azymut_produkty_generic_ceneo (6,2 mln)
+# watermark ma, ale MERGE na tej skali tez nie musi chodzic trzy razy na dobe.
+# W cyklu co 8h to ten sam transfer 3x bez zadnego zysku — raz na dobe wystarcza. Trigger dzienny:
 #   gcloud scheduler jobs create http bidata-bq-sync-produkty \
 #     --location=europe-central2 --project=erp-production-438714 \
 #     --schedule="40 4 * * *" --time-zone="Europe/Warsaw" --attempt-deadline=180s \
 #     --uri="https://europe-north1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/erp-production-438714/jobs/bidata-bq-sync:run" \
 #     --http-method=POST \
 #     --oauth-service-account-email="businesschecks@erp-production-438714.iam.gserviceaccount.com" \
-#     --message-body='{"overrides":{"containerOverrides":[{"name":"etl","args":["-m","etl.sync","--table=azymut_produkty_azymut","--table=azymut_produkty_platon"]}]}}'
+#     --message-body='{"overrides":{"containerOverrides":[{"name":"etl","args":["-m","etl.sync","--table=azymut_produkty_azymut","--table=azymut_produkty_platon","--table=azymut_produkty_generic_ceneo","--table=spl_mvLiber_ProductData","--table=spl_mvZnak2_ProductData","--table=spl_vMiZ_ProductData"]}]}}'
 # Bez tego triggera te tabele NIE SA odswiezane w ogole — wpisanie ich do tables.json nie
 # wystarcza (wpadka #1 w etl/README.md: mirror stal 16 dni).
 #
@@ -85,6 +87,14 @@ spec:
                 - --table=azymut_CustomerOrder
                 - --table=azymut_BookstoreProduct
                 - --table=azymut_Dzial
+                # Slowniki i male tabele referencyjne — delta albo pelny reload kilkudziesieciu
+                # tysiecy wierszy, wiec moga lecieć w cyklu co 8 h razem z reszta.
+                # Do 2026-09-27 byly w tables.json, ale NIE tutaj, wiec staly: Replacement 18 dni,
+                # SupplierEanCorrection 17 dni, a ShipmentMethod* nie istnialy w BQ w ogole.
+                - --table=azymut_BookstoreProductReplacement
+                - --table=azymut_SupplierEanCorrection
+                - --table=azymut_ShipmentMethod
+                - --table=azymut_ShipmentMethodPrice
                 - --table=selly_BundleDefinitions
                 - --table=selly_BundleComponents
                 - --table=selly_ApiProducts

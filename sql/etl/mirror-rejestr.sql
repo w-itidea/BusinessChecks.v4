@@ -72,9 +72,15 @@ SELECT * FROM (
 
   UNION ALL
 
-  -- 3. Jest w mirrorze, ale nie ma jej w rejestrze. Nie zawsze blad — tak wygladaja tabele
-  --    dokladane innym kanalem (np. kolektor cf_crawl.py). Ale nikt ich nie pilnuje wiekiem,
-  --    wiec maja byc widoczne.
+  -- 3. Jest w mirrorze, ale nie ma jej ani w rejestrze, ani na liscie znanych wyjatkow.
+  --    Tabele dokladane innym kanalem niz ETL nie sa bledem — ale maja byc UDOKUMENTOWANE,
+  --    bo inaczej nikt nie wie, skad sie biora i kto je odswieza.
+  --
+  -- ⚠️ Dlaczego lista wyjatkow, a nie "zglaszaj wszystko": trzy tabele spoza ETL istnieja
+  -- legalnie i check wysylalby o nich wiadomosc KAZDEGO dnia. Alarm, ktory zawsze wyje,
+  -- przestaje cokolwiek znaczyc — ta sama zasada, ktora w mirror-health.sql wylaczyla
+  -- ofi_AmazonFeedProductSettings z progu zastoju. Nowa tabela spoza rejestru nadal sie
+  -- odezwie, bo na tej liscie jej nie bedzie.
   SELECT
     b.table_id,
     'ℹ️ poza rejestrem ETL',
@@ -85,6 +91,13 @@ SELECT * FROM (
   FROM w_bq b
   LEFT JOIN rejestr r ON r.target = b.table_id
   WHERE r.target IS NULL
+    AND b.table_id NOT IN (
+      -- statyczne kohorty testowe, zakladane raz pod konkretna analize i celowo zamrozone:
+      'fosa_ab_cohort',           -- test A/B fosy BOL, 20 476 EAN, 2026-07
+      'platon_wydobco_cohort',    -- 7 734 EAN wyd. obcojezycznych od Platona, 2026-08
+      -- kolektor Cloudflare, zasilany wlasnym skryptem etl/cf_crawl.py (nie przez sync.py):
+      'cf_crawl_daily'
+    )
 )
 ORDER BY CASE Problem WHEN '❌ NIE ISTNIEJE w BQ' THEN 1 WHEN '⚠️ ZASTOJ' THEN 2 ELSE 3 END,
          Wiek_dni DESC

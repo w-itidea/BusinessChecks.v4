@@ -13,6 +13,18 @@ liczony w chmurze, wysyłany na Slacka. Bez VPN, bez włączonego laptopa, bez A
 
 ---
 
+## ⛔ Zasada: bez danych próbkowanych
+
+**W checkach i analizach nie używamy źródeł próbkowanych** (decyzja Wojtka, 2026-09-18).
+Cloudflare GraphQL: wszystko z sufiksem `...AdaptiveGroups` jest ekstrapolowane z próbki i zawyża
+**1,00–1,77×, różnie dla każdej zony** (pomiar 17.09.2026, n = 8 zon; kontrola na panelu CF zgodna
+co do cyfry z `httpRequests1dGroups`). Liczba bezwzględna w checku → z datasetu nieprróbkowanego
+albo z faktury. Przekrój dostępny tylko w zbiorze próbkowanym (boty, user-agenty, Cache Reserve)
+→ podawaj **udziały**, a wartości bezwzględne skaluj wierszem kalibracyjnym
+`bot = '__EXACT_1DGROUPS__'` z `BIData.cf_crawl_daily` (kolektor: `etl/cf_crawl.py`).
+
+---
+
 ## Architektura
 
 ```
